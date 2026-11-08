@@ -35,6 +35,24 @@
   .setup h2 { font-size:clamp(28px, 4vw, 40px); letter-spacing:-0.02em; margin:0 0 16px; }
   .setup p { color:var(--muted); margin:0 0 16px; }
   .warn { border-left:3px solid var(--accent); padding:4px 0 4px 16px; }
+  .compare { padding:0 0 96px; }
+  .compare h2, .limits h2 { font-size:clamp(28px, 4vw, 40px); letter-spacing:-0.02em; margin:0 0 12px; }
+  .compare > p, .limits > p { color:var(--muted); margin:0 0 28px; }
+  .table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:18px; }
+  table { width:100%; border-collapse:collapse; font-size:15px; min-width:760px; word-break:keep-all; }
+  th, td { min-width:120px; padding:14px 16px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:0; }
+  thead th { background:var(--card); font-weight:600; white-space:nowrap; }
+  tbody th { font-weight:600; white-space:nowrap; color:var(--muted); }
+  td.me { background:color-mix(in srgb, var(--accent) 8%, transparent); font-weight:600; }
+  .vs { padding:0 0 96px; }
+  .vs h2 { font-size:clamp(28px, 4vw, 40px); letter-spacing:-0.02em; margin:0 0 12px; }
+  .vs > p { color:var(--muted); margin:0 0 28px; }
+  .vs .features { padding:0; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); }
+  .limits { padding:0 0 96px; }
+  .limits ul { margin:0; padding-left:20px; color:var(--muted); }
+  .limits li { margin-bottom:8px; }
+  .limits b { color:var(--fg); }
   footer { border-top:1px solid var(--line); padding:28px 0; color:var(--muted); font-size:14px; text-align:center; }
 </style>
 </head>
@@ -58,6 +76,49 @@
     <div class="f"><b>CNAME 우회 차단</b><span>다른 이름 뒤에 숨은 광고 서버까지 응답을 검사해 막습니다.</span></div>
     <div class="f"><b>메뉴바 한눈에</b><span>차단 비율, 일시 정지, 목록 갱신을 클릭 한 번으로.</span></div>
     <div class="f"><b>빠르고 가벼움</b><span>Go로 만든 DNS 서버. 캐시된 응답은 1ms 미만.</span></div>
+  </section>
+
+  <section class="vs">
+    <h2>브라우저 확장보다 나은 점</h2>
+    <p>확장은 브라우저 안에서만 일합니다. Hole은 Mac 전체의 입구를 지킵니다.</p>
+    <div class="features">
+      <div class="f"><b>앱 속 광고와 추적</b><span>카카오톡 광고, 앱이 몰래 보내는 통계 수집까지. 확장은 브라우저 밖을 볼 수 없습니다.</span></div>
+      <div class="f"><b>한 번에 전부</b><span>Safari, Chrome, Arc, Firefox. 브라우저마다 확장을 깔고 설정할 필요가 없습니다. 공유기에 지정하면 휴대폰과 TV까지.</span></div>
+      <div class="f"><b>페이지를 읽지 않음</b><span>확장은 "모든 웹사이트의 데이터 읽기·변경" 권한을 요구합니다. Hole은 도메인 이름만 보고, 페이지 내용엔 손대지 않습니다.</span></div>
+      <div class="f"><b>브라우저가 가볍게</b><span>광고 요청은 연결조차 시작되지 않습니다. 탭마다 필터 수만 개를 돌리는 부담이 브라우저에서 사라집니다.</span></div>
+      <div class="f"><b>Manifest V3와 무관</b><span>Chrome의 확장 규칙 변경으로 uBlock Origin 같은 차단기가 제약을 받아도, DNS 차단은 영향이 없습니다.</span></div>
+      <div class="f"><b>같이 쓰면 더 좋음</b><span>Hole이 광고 서버를 막고, 확장이 남은 빈 자리를 숨깁니다. 둘은 경쟁이 아니라 보완 관계입니다.</span></div>
+    </div>
+  </section>
+
+  <section class="compare">
+    <h2>무엇이 다른가요?</h2>
+    <p>Pi-hole을 별도 장비 없이 Mac 앱 하나로. 브라우저 확장이 못 닿는 앱 속 광고까지.</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th></th><th>Hole</th><th>Pi-hole</th><th>브라우저 확장<br><small>uBlock Origin 등</small></th><th>AdGuard for Mac</th></tr></thead>
+      <tbody>
+        <tr><th>설치</th><td class="me">brew 한 줄, 메뉴바 앱</td><td>라즈베리 파이·Linux·Docker 서버 필요</td><td>브라우저마다 설치</td><td>앱 설치</td></tr>
+        <tr><th>앱 속 광고</th><td class="me">막음 (카카오톡 등)</td><td>막음</td><td>못 막음</td><td>막음</td></tr>
+        <tr><th>차단 방식</th><td class="me">DNS</td><td>DNS</td><td>요청·화면 요소 필터</td><td>HTTPS 트래픽 필터</td></tr>
+        <tr><th>CNAME 우회 차단</th><td class="me">지원</td><td>지원</td><td>일부 (Firefox)</td><td>지원</td></tr>
+        <tr><th>광고 자리 숨기기</th><td class="me">못 함</td><td>못 함</td><td>가능</td><td>가능</td></tr>
+        <tr><th>HTTPS 가로채기</th><td class="me">안 함</td><td>안 함</td><td>안 함</td><td>함 (인증서 설치)</td></tr>
+        <tr><th>네트워크 전체</th><td class="me">가능 (공유기 DNS 지정)</td><td>주 용도</td><td>불가</td><td>불가</td></tr>
+        <tr><th>가격</th><td class="me">무료 · 오픈소스</td><td>무료 · 오픈소스</td><td>무료</td><td>유료 구독</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section class="limits">
+    <h2>DNS로는 못 막는 것</h2>
+    <p>솔직하게 적어 둡니다.</p>
+    <ul>
+      <li><b>본문과 같은 도메인에서 오는 광고</b>: YouTube 동영상 광고, 카카오톡 "오늘의 카카오" 같은 자체 배너.</li>
+      <li><b>빈 광고 자리</b>: 광고는 막지만 그 자리는 남을 수 있습니다. 숨기려면 브라우저 확장과 함께 쓰세요.</li>
+      <li><b>보안 DNS(DoH)를 켠 브라우저</b>: Hole을 거치지 않으므로 꺼야 합니다.</li>
+    </ul>
   </section>
 
   <section class="setup">
