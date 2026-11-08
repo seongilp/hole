@@ -3,6 +3,24 @@
 Pi-hole 스타일의 네트워크 광고 차단 DNS 서버(Go)와 macOS 메뉴바 앱.
 
 광고/트래커 도메인 질의에는 `0.0.0.0` / `::`를 돌려주고, 나머지는 업스트림 DNS로 전달하고 캐시합니다.
+CNAME 클로킹(차단 목록에 없는 이름이 광고 서버를 가리키는 우회)도 막습니다.
+
+## 설치
+
+```bash
+brew install --cask seongilp/tap/hole
+```
+
+또는 [Releases](https://github.com/seongilp/hole/releases)에서 DMG를 받아 설치합니다. Apple 공증을 받은 유니버설 앱(Apple Silicon + Intel, macOS 13 이상)입니다.
+
+실행하면 메뉴바에 🛡 아이콘이 생기고 DNS 서버(`:53`)가 함께 뜹니다. 그다음 Mac의 DNS를 Hole로 지정합니다.
+
+```bash
+networksetup -setdnsservers Wi-Fi 127.0.0.1        # 유선이면 해당 서비스 이름으로
+```
+
+> Hole을 종료하거나 삭제하기 **전에** DNS를 되돌리세요. 그렇지 않으면 인터넷이 끊깁니다.
+> `networksetup -setdnsservers Wi-Fi empty`
 
 ## 구성
 

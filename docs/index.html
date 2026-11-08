@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hole — Mac 메뉴바 광고 차단 DNS</title>
+<meta name="description" content="Pi-hole처럼 동작하는 macOS 메뉴바 광고 차단기. 앱 하나로 DNS 단계에서 광고와 트래커를 막습니다.">
+<style>
+  :root { --bg:#ffffff; --fg:#0b0d12; --muted:#6b7280; --line:#e5e7eb; --accent:#3b6cf6; --card:#f6f7f9; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0b0d12; --fg:#f3f4f6; --muted:#9ca3af; --line:#1f2430; --accent:#7aa2ff; --card:#141821; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:17px/1.6 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px; }
+  header { padding:20px 0; display:flex; justify-content:space-between; align-items:center; }
+  header a { color:var(--muted); text-decoration:none; font-size:15px; }
+  .logo { display:flex; gap:10px; align-items:center; font-weight:700; font-size:18px; color:var(--fg); }
+  .logo img { width:32px; height:32px; }
+  .hero { padding:96px 0 72px; text-align:center; }
+  .hero img { width:120px; height:120px; margin-bottom:28px; }
+  h1 { font-size:clamp(40px, 7vw, 72px); line-height:1.1; letter-spacing:-0.03em; margin:0 0 20px; }
+  .sub { font-size:clamp(18px, 2.4vw, 22px); color:var(--muted); margin:0 auto 40px; max-width:620px; }
+  pre { display:inline-block; text-align:left; margin:0; padding:16px 22px; border-radius:14px;
+        background:var(--card); border:1px solid var(--line); font-size:16px; overflow-x:auto; max-width:100%; }
+  code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .alt { margin-top:14px; font-size:15px; color:var(--muted); }
+  .alt a { color:var(--accent); }
+  .features { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; padding:48px 0 80px; }
+  .f { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:24px; }
+  .f b { display:block; font-size:19px; margin-bottom:6px; }
+  .f span { color:var(--muted); font-size:15px; }
+  .setup { padding:0 0 96px; }
+  .setup h2 { font-size:clamp(28px, 4vw, 40px); letter-spacing:-0.02em; margin:0 0 16px; }
+  .setup p { color:var(--muted); margin:0 0 16px; }
+  .warn { border-left:3px solid var(--accent); padding:4px 0 4px 16px; }
+  footer { border-top:1px solid var(--line); padding:28px 0; color:var(--muted); font-size:14px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="logo"><img src="icon.png" alt="">Hole</span>
+    <a href="https://github.com/seongilp/hole">GitHub</a>
+  </header>
+
+  <section class="hero">
+    <img src="icon.png" alt="Hole 아이콘">
+    <h1>광고는<br>구멍 속으로.</h1>
+    <p class="sub">Pi-hole을 Mac 메뉴바에. 앱 하나가 DNS 단계에서 광고와 트래커를 막습니다. 브라우저도, 앱도 전부.</p>
+    <pre><code>brew install --cask seongilp/tap/hole</code></pre>
+    <p class="alt">또는 <a href="https://github.com/seongilp/hole/releases/latest">DMG 다운로드</a> · Apple 공증 · Apple Silicon + Intel</p>
+  </section>
+
+  <section class="features">
+    <div class="f"><b>78,000+ 도메인</b><span>StevenBlack hosts와 한국 광고 목록(YousList)을 매일 자동 갱신.</span></div>
+    <div class="f"><b>CNAME 우회 차단</b><span>다른 이름 뒤에 숨은 광고 서버까지 응답을 검사해 막습니다.</span></div>
+    <div class="f"><b>메뉴바 한눈에</b><span>차단 비율, 일시 정지, 목록 갱신을 클릭 한 번으로.</span></div>
+    <div class="f"><b>빠르고 가벼움</b><span>Go로 만든 DNS 서버. 캐시된 응답은 1ms 미만.</span></div>
+  </section>
+
+  <section class="setup">
+    <h2>설치 후 한 줄이면 끝.</h2>
+    <p>Mac의 DNS를 Hole로 지정하세요.</p>
+    <pre><code>networksetup -setdnsservers Wi-Fi 127.0.0.1</code></pre>
+    <p class="warn" style="margin-top:20px">Hole을 끄기 전에는 DNS를 되돌리세요: <code>networksetup -setdnsservers Wi-Fi empty</code></p>
+  </section>
+</div>
+<footer>Hole · MIT License · <a href="https://github.com/seongilp/hole" style="color:inherit">github.com/seongilp/hole</a></footer>
+</body>
+</html>

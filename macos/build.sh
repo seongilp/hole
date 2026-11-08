@@ -6,17 +6,24 @@ cd "$(dirname "$0")"
 APP_NAME="Hole"
 APP_BUNDLE="${APP_NAME}.app"
 
-echo "==> go build (hole 서버)"
-mkdir -p .build
-(cd .. && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o macos/.build/hole-server ./cmd/hole)
+MIN_MACOS="13.0"
 
-echo "==> swift build (release)"
-swift build -c release
+echo "==> go build (hole 서버, universal)"
+mkdir -p .build
+for ARCH in arm64 amd64; do
+    (cd .. && CGO_ENABLED=0 GOOS=darwin GOARCH=${ARCH} MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS} \
+        go build -trimpath -ldflags "-s -w" -o "macos/.build/hole-server-${ARCH}" ./cmd/hole)
+done
+lipo -create -output .build/hole-server .build/hole-server-arm64 .build/hole-server-amd64
+
+echo "==> swift build (release, universal)"
+swift build -c release --arch arm64 --arch x86_64
+SWIFT_BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/${APP_NAME}"
 
 echo "==> ${APP_BUNDLE} 조립"
 rm -rf "${APP_BUNDLE}"
 mkdir -p "${APP_BUNDLE}/Contents/MacOS" "${APP_BUNDLE}/Contents/Resources"
-cp ".build/release/${APP_NAME}" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
+cp "${SWIFT_BIN}" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 cp ".build/hole-server" "${APP_BUNDLE}/Contents/MacOS/hole-server"
 cp "Resources/Info.plist" "${APP_BUNDLE}/Contents/Info.plist"
 cp "Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/AppIcon.icns"
