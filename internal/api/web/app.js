@@ -80,16 +80,43 @@ function renderStats(s) {
   renderTop($("top-clients"), s.top_clients, "클라이언트");
 }
 
+function ruleButton(q) {
+  const td = cell("", "action");
+  if (q.domain.endsWith(".arpa")) return td; // reverse lookups, not worth a rule
+  const blocked = q.status === "blocked";
+  const btn = document.createElement("button");
+  btn.className = blocked ? "small" : "small danger";
+  btn.textContent = blocked ? "허용 추가" : "차단 추가";
+  btn.title = blocked ? `${q.domain} 허용 규칙 추가` : `${q.domain} 차단 규칙 추가`;
+  btn.onclick = () => addRule(blocked ? "allow" : "deny", q.domain);
+  td.append(btn);
+  return td;
+}
+
 function renderQueries(qs) {
-  renderRows($("queries"), ["시간", "도메인", "타입", "클라이언트", "결과", "ms"], qs.map((q) => {
+  const table = $("queries");
+  // Don't swap rows out from under the pointer: a click would land on a stale row.
+  if (table.matches(":hover")) return;
+  renderRows(table, ["시간", "도메인", "타입", "클라이언트", "결과", "ms", ""], qs.map((q) => {
     const status = cell("");
     const pill = document.createElement("span");
     pill.className = "pill " + q.status;
     pill.textContent = q.status;
     status.append(pill);
     return [cell(new Date(q.time).toLocaleTimeString("ko-KR")), cell(q.domain, "domain"), cell(q.type),
-            cell(q.client), status, cell(q.latency_ms.toFixed(1), "num")];
+            cell(q.client), status, cell(q.latency_ms.toFixed(1), "num"), ruleButton(q)];
   }));
+}
+
+async function addRule(kind, domain) {
+  try {
+    renderRules(await api("/api/rules", { method: "POST", body: JSON.stringify({ kind, domain }) }));
+    toast(`${domain} ${kind === "deny" ? "차단" : "허용"} 규칙 추가 · 기기 DNS 캐시가 남아 있으면 몇 분 뒤 적용`);
+    return true;
+  } catch (e) {
+    toast("실패: " + e.message);
+    return false;
+  }
 }
 
 function renderRules(r) {
@@ -142,11 +169,7 @@ $("refresh").onclick = async () => {
 $("rule-form").onsubmit = async (ev) => {
   ev.preventDefault();
   const domain = $("rule-domain").value.trim();
-  try {
-    renderRules(await api("/api/rules", { method: "POST", body: JSON.stringify({ kind: $("rule-kind").value, domain }) }));
-    $("rule-domain").value = "";
-    toast(`${domain} 추가됨`);
-  } catch (e) { toast("실패: " + e.message); }
+  if (await addRule($("rule-kind").value, domain)) $("rule-domain").value = "";
 };
 
 api("/api/rules").then(renderRules).catch(() => {});
