@@ -60,6 +60,12 @@
            background:var(--fg); color:var(--bg); display:none; }
   .muted { color:var(--muted); font-size:12px; }
   .log { max-height:420px; overflow:auto; }
+  .test-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:8px; }
+  .test-head h2 { margin:0; flex:1; }
+  #test-summary { font-size:15px; font-weight:600; margin:4px 0; }
+  #test-summary.good { color:var(--ok); } #test-summary.bad { color:var(--block); }
+  .pill.pass { color:var(--block); border-color:var(--block); }
+  .pill.stopped { color:var(--ok); border-color:var(--ok); }
 </style>
 </head>
 <body>
@@ -76,6 +82,17 @@
     <div class="card tile"><div class="label">차단 비율</div><div class="value" id="t-pct">–</div></div>
     <div class="card tile"><div class="label">캐시 응답</div><div class="value" id="t-cached">–</div></div>
     <div class="card tile"><div class="label">차단 도메인 수</div><div class="value" id="t-domains">–</div></div>
+  </section>
+
+  <section class="card">
+    <div class="test-head">
+      <h2>브라우저 차단 테스트</h2>
+      <button id="run-test" class="primary">다시 테스트</button>
+    </div>
+    <p id="test-summary">테스트 중…</p>
+    <p id="test-hint" class="muted"></p>
+    <div class="log"><table id="test-results" class="compact-ends"></table></div>
+    <p class="muted">이 브라우저에서 광고·추적 서버에 실제로 접속해 봅니다. 브라우저 확장이 막은 것도 차단으로 표시됩니다.</p>
   </section>
 
   <section class="grid3">

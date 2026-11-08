@@ -63,6 +63,7 @@ func New(b Backend, token string) http.Handler {
 	mux.HandleFunc("POST /api/rules", s.auth(s.postRule))
 	mux.HandleFunc("DELETE /api/rules", s.auth(s.deleteRule))
 	mux.HandleFunc("POST /api/lists/refresh", s.auth(s.postRefresh))
+	mux.HandleFunc("GET /api/probes", s.getProbes)
 
 	static, err := fs.Sub(webFS, "web")
 	if err != nil {
@@ -73,10 +74,11 @@ func New(b Backend, token string) http.Handler {
 }
 
 func securityHeaders(next http.Handler) http.Handler {
+	csp := contentSecurityPolicy()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'")
+		w.Header().Set("Content-Security-Policy", csp)
 		next.ServeHTTP(w, r)
 	})
 }

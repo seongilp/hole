@@ -244,3 +244,48 @@ func deadAddr(t *testing.T) string {
 	_ = pc.Close()
 	return addr
 }
+
+func minTTL(m *dns.Msg) uint32 {
+	ttl := ^uint32(0)
+	for _, rr := range m.Answer {
+		ttl = min(ttl, rr.Header().Ttl)
+	}
+	return ttl
+}
+
+// While blocking is paused, answers for would-be-blocked names get a short TTL so
+// resuming takes effect quickly instead of after the upstream TTL (often minutes).
+func TestHandler_PausedAnswersForBlockedNamesExpireQuickly(t *testing.T) {
+	tests := []struct {
+		name     string
+		upstream func(t *testing.T) string
+		block    []string
+		query    string
+		wantMax  uint32
+	}{
+		{"listed domain", nil, []string{"ads.com"}, "ads.com", pausedTTL},
+		{"cname cloaked", func(t *testing.T) string { return cnameUpstream(t, "display-ad.cdn.example") },
+			[]string{"display-ad.cdn.example"}, "serv.ds.example.com", pausedTTL},
+		{"normal domain keeps upstream TTL", nil, []string{"ads.com"}, "news.com", 300},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var ups []string
+			if tt.upstream != nil {
+				ups = []string{tt.upstream(t)}
+			}
+			f := newFixture(t, tt.block, nil, ups...)
+			f.handler.SetEnabled(false)
+			for i := 0; i < 2; i++ { // second query is served from cache
+				m := query(t, f.addr, tt.query, dns.TypeA)
+				got := minTTL(m)
+				if tt.wantMax == pausedTTL && got > pausedTTL {
+					t.Fatalf("query %d: TTL %d, want <= %d", i, got, pausedTTL)
+				}
+				if tt.wantMax == 300 && got < 290 {
+					t.Fatalf("query %d: TTL %d, want upstream TTL kept", i, got)
+				}
+			}
+		})
+	}
+}

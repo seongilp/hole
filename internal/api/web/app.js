@@ -152,3 +152,70 @@ $("rule-form").onsubmit = async (ev) => {
 api("/api/rules").then(renderRules).catch(() => {});
 poll();
 setInterval(poll, POLL_MS);
+
+// --- Browser block test -------------------------------------------------
+// A blocked host resolves to 0.0.0.0, so the connection fails at once. An opaque
+// (no-cors) success means the request left the machine: the browser bypassed Hole.
+const PROBE_TIMEOUT_MS = 4000;
+
+async function reach(host) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), PROBE_TIMEOUT_MS);
+  try {
+    await fetch(`https://${host}/?hole-test=${Date.now()}`, { mode: "no-cors", cache: "no-store", signal: ctl.signal });
+    return "loaded";
+  } catch (e) {
+    return e.name === "AbortError" ? "timeout" : "failed";
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function pill(text, cls) {
+  const td = document.createElement("td");
+  const span = document.createElement("span");
+  span.className = "pill " + cls;
+  span.textContent = text;
+  td.append(span);
+  return td;
+}
+
+async function runBlockTest() {
+  const button = $("run-test");
+  const summary = $("test-summary");
+  const hint = $("test-hint");
+  button.disabled = true;
+  summary.className = "";
+  summary.textContent = "테스트 중…";
+  hint.textContent = "";
+  try {
+    const { control, probes } = await api("/api/probes");
+    const [controlResult, ...results] = await Promise.all([control, ...probes.map((p) => p.host)].map(reach));
+    const passed = probes.filter((_, i) => results[i] === "loaded");
+    renderRows($("test-results"), ["분류", "대상", "결과"], probes.map((p, i) => [
+      cell(p.category),
+      cell(`${p.name} (${p.host})`, "domain"),
+      results[i] === "loaded" ? pill("통과됨", "pass") : pill("차단됨", "stopped"),
+    ]));
+    if (controlResult !== "loaded") {
+      summary.className = "bad";
+      summary.textContent = "인터넷에 연결되지 않아 테스트할 수 없습니다.";
+      hint.textContent = "일반 사이트도 열리지 않습니다. 네트워크 연결을 확인하세요.";
+    } else if (passed.length === 0) {
+      summary.className = "good";
+      summary.textContent = `✓ ${probes.length}개 모두 차단됨. 이 브라우저는 Hole로 보호되고 있습니다.`;
+    } else {
+      summary.className = "bad";
+      summary.textContent = `✗ ${probes.length}개 중 ${passed.length}개가 차단되지 않았습니다.`;
+      hint.textContent = "이 브라우저가 Hole을 우회하고 있습니다. 보안 DNS(DoH)와 iCloud 비공개 릴레이를 끄고 브라우저를 다시 시작하세요. 터미널에서 hole doctor 로 원인을 볼 수 있습니다.";
+    }
+  } catch (e) {
+    summary.className = "bad";
+    summary.textContent = "테스트 실패: " + e.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+$("run-test").addEventListener("click", runBlockTest);
+runBlockTest();

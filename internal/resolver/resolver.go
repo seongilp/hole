@@ -19,6 +19,10 @@ import (
 // blockedTTL is the TTL of synthesized answers for blocked domains.
 const blockedTTL = 60
 
+// pausedTTL caps answers for would-be-blocked names while blocking is off, so clients
+// stop using the real addresses soon after blocking resumes.
+const pausedTTL = 10
+
 // Config holds the Handler's dependencies.
 type Config struct {
 	Upstreams []string // "host:port", tried in order
@@ -85,6 +89,9 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	}
 	q := r.Question[0]
 	resp, status := h.resolve(r, q)
+	if !h.Enabled() && status != stats.StatusError && h.wouldBlock(q.Name, resp) {
+		resp = capTTL(resp, pausedTTL)
+	}
 	resp.Id = r.Id
 	h.write(w, resp)
 
@@ -126,9 +133,28 @@ func (h *Handler) resolve(r *dns.Msg, q dns.Question) (*dns.Msg, stats.Status) {
 // This defeats CNAME cloaking, where an unlisted name (serv.ds.kakao.com)
 // aliases a listed ad server (display-ad-*.kgslb.com).
 func (h *Handler) cnameBlocked(resp *dns.Msg) bool {
-	if !h.Enabled() {
-		return false
+	return h.Enabled() && h.cnameMatches(resp)
+}
+
+// wouldBlock reports whether the query would be blocked if blocking were on.
+func (h *Handler) wouldBlock(name string, resp *dns.Msg) bool {
+	return h.Matcher().Blocked(name) || h.cnameMatches(resp)
+}
+
+// capTTL returns a copy of m with every record TTL at most ttl.
+func capTTL(m *dns.Msg, ttl uint32) *dns.Msg {
+	out := m.Copy()
+	for _, section := range [][]dns.RR{out.Answer, out.Ns, out.Extra} {
+		for _, rr := range section {
+			if h := rr.Header(); h.Rrtype != dns.TypeOPT && h.Ttl > ttl {
+				h.Ttl = ttl
+			}
+		}
 	}
+	return out
+}
+
+func (h *Handler) cnameMatches(resp *dns.Msg) bool {
 	m := h.Matcher()
 	for _, rr := range resp.Answer {
 		if c, ok := rr.(*dns.CNAME); ok && m.Blocked(c.Target) {
