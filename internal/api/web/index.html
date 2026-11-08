@@ -30,7 +30,7 @@
   .top th:last-child { text-align:right; }
   /* Query log scrolls sideways on phones instead of crushing the domain column. */
   #queries { min-width:700px; }
-  #queries td.action { width:1%; text-align:right; }
+  td.action { width:1%; text-align:right; padding-left:8px; }
   button.small { padding:2px 10px; font-size:12px; }
   main > *, .grid3 > * { min-width:0; } /* let wide tables scroll inside their card */
   @media (max-width: 600px) {
@@ -43,7 +43,7 @@
   td, th { text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); }
   th { color:var(--muted); font-weight:500; }
   td.num { text-align:right; font-variant-numeric:tabular-nums; }
-  .domain { word-break:break-all; }
+  .domain { overflow-wrap:anywhere; }
   .pill { font-size:11px; padding:2px 8px; border-radius:99px; border:1px solid var(--line); }
   .pill.blocked { color:var(--block); border-color:var(--block); }
   .pill.cached, .pill.forwarded { color:var(--ok); border-color:var(--ok); }

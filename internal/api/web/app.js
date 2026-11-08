@@ -35,9 +35,18 @@ function toast(msg) {
 
 function cell(text, cls) {
   const td = document.createElement("td");
-  td.textContent = text;
+  if (cls === "domain") appendBreakable(td, text);
+  else td.textContent = text;
   if (cls) td.className = cls;
   return td;
+}
+
+// Domains wrap after dots ("googlesyndication.|com"), not mid-label.
+function appendBreakable(el, domain) {
+  domain.split(".").forEach((part, i, parts) => {
+    el.append(part + (i < parts.length - 1 ? "." : ""));
+    if (i < parts.length - 1) el.append(document.createElement("wbr"));
+  });
 }
 
 function renderRows(table, headers, rows, emptyText = "아직 데이터 없음") {
@@ -56,8 +65,26 @@ function renderRows(table, headers, rows, emptyText = "아직 데이터 없음")
   rows.forEach((cells) => { const tr = document.createElement("tr"); tr.append(...cells); table.append(tr); });
 }
 
-function renderTop(table, items, label = "도메인") {
-  renderRows(table, [label, "횟수"], (items || []).map((c) => [cell(c.name, "domain"), cell(fmt.format(c.count), "num")]));
+// action, if given, is {label, kind}: each row gets a button adding that rule for the domain.
+function renderTop(table, items, label = "도메인", action = null) {
+  if (action && table.matches(":hover")) return; // keep buttons still under the pointer
+  const headers = action ? [label, "횟수", ""] : [label, "횟수"];
+  renderRows(table, headers, (items || []).map((c) => {
+    const row = [cell(c.name, "domain"), cell(fmt.format(c.count), "num")];
+    if (action) row.push(actionCell(action.label, action.kind, c.name));
+    return row;
+  }));
+}
+
+function actionCell(label, kind, domain) {
+  const td = cell("", "action");
+  const btn = document.createElement("button");
+  btn.className = kind === "deny" ? "small danger" : "small";
+  btn.textContent = label;
+  btn.title = `${domain} ${kind === "deny" ? "차단" : "허용"} 규칙 추가`;
+  btn.onclick = () => addRule(kind, domain);
+  td.append(btn);
+  return td;
 }
 
 function renderStatus(st) {
@@ -75,22 +102,14 @@ function renderStats(s) {
   $("t-blocked").textContent = fmt.format(s.blocked);
   $("t-pct").textContent = s.blocked_percent.toFixed(1) + "%";
   $("t-cached").textContent = fmt.format(s.cached);
-  renderTop($("top-blocked"), s.top_blocked);
+  renderTop($("top-blocked"), s.top_blocked, "도메인", { label: "허용 추가", kind: "allow" });
   renderTop($("top-allowed"), s.top_allowed);
   renderTop($("top-clients"), s.top_clients, "클라이언트");
 }
 
 function ruleButton(q) {
-  const td = cell("", "action");
-  if (q.domain.endsWith(".arpa")) return td; // reverse lookups, not worth a rule
-  const blocked = q.status === "blocked";
-  const btn = document.createElement("button");
-  btn.className = blocked ? "small" : "small danger";
-  btn.textContent = blocked ? "허용 추가" : "차단 추가";
-  btn.title = blocked ? `${q.domain} 허용 규칙 추가` : `${q.domain} 차단 규칙 추가`;
-  btn.onclick = () => addRule(blocked ? "allow" : "deny", q.domain);
-  td.append(btn);
-  return td;
+  if (q.domain.endsWith(".arpa")) return cell("", "action"); // reverse lookups, not worth a rule
+  return q.status === "blocked" ? actionCell("허용 추가", "allow", q.domain) : actionCell("차단 추가", "deny", q.domain);
 }
 
 function renderQueries(qs) {
