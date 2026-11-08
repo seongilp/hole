@@ -18,6 +18,8 @@ const maxListBytes = 64 << 20
 // DefaultSources are well-maintained public block lists.
 var DefaultSources = []string{
 	"https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+	// Korean ad/tracker domains (Kakao, Naver, Korean ad networks).
+	"https://raw.githubusercontent.com/yous/YousList/master/hosts.txt",
 }
 
 // Fetcher loads block lists.
