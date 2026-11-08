@@ -42,7 +42,7 @@ func parseFlags() (options, error) {
 	var o options
 	var upstreams, sources string
 	flag.StringVar(&o.dnsAddr, "dns", ":53", "DNS listen address (UDP and TCP)")
-	flag.StringVar(&o.httpAddr, "http", "127.0.0.1:8080", "dashboard/API listen address")
+	flag.StringVar(&o.httpAddr, "http", "127.0.0.1:4653", "dashboard/API listen address")
 	flag.StringVar(&upstreams, "upstream", "1.1.1.1:53,8.8.8.8:53", "comma-separated upstream DNS servers, tried in order")
 	flag.StringVar(&sources, "lists", strings.Join(lists.DefaultSources, ","), "comma-separated block list URLs or file paths")
 	flag.StringVar(&o.dataDir, "data", "data", "directory for persisted user rules")
