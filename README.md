@@ -15,14 +15,18 @@ brew install --cask seongilp/tap/hole
 
 **처음 한 번은 응용 프로그램 폴더에서 Hole을 직접 열고** "인터넷에서 다운로드한 앱" 확인창에서 "열기"를 누르세요. 승인 전에는 macOS가 내장 서버 실행을 막아 둡니다.
 
-메뉴바에 🛡 아이콘과 차단 비율이 보이면 DNS 서버(`:53`)가 뜬 것입니다. **그다음** Mac의 DNS를 Hole로 지정합니다.
+메뉴바에 방패 아이콘이 뜨면 메뉴에서 **"이 Mac의 DNS를 Hole로 지정"**을 켭니다. 구멍에 초록 불이 들어오면 차단 중입니다.
+
+- 서버가 응답할 때만 DNS를 Hole로 지정하고, 앱을 종료하거나 서버가 멈추면 원래 DNS로 되돌립니다. Hole이 꺼져서 인터넷이 끊기는 일이 없습니다.
+- 서버가 비정상 종료되면 자동으로 다시 띄웁니다.
+
+광고가 안 막히면:
 
 ```bash
-networksetup -setdnsservers Wi-Fi 127.0.0.1        # 유선이면 해당 서비스 이름으로
+hole doctor
 ```
 
-> Hole을 종료하거나 삭제하기 **전에** DNS를 되돌리세요. 그렇지 않으면 인터넷이 끊깁니다.
-> `networksetup -setdnsservers Wi-Fi empty`
+서버, API, 업스트림, 시스템 DNS, 실제 조회 경로, 브라우저 보안 DNS(Chrome/Edge/Brave/Arc/Firefox)를 점검하고 해결 방법을 알려 줍니다.
 
 ## 구성
 
@@ -34,6 +38,7 @@ internal/cache       TTL 기반 응답 캐시
 internal/lists       차단 목록 다운로드(URL/파일)
 internal/rules       사용자 허용/차단 규칙 (JSON, atomic write)
 internal/engine      목록 + 규칙 → matcher 교체, 주기적 갱신
+internal/doctor      `hole doctor` 진단 점검
 internal/stats       쿼리 통계, 최근 쿼리 로그 (1분마다·종료 시 저장, 재시작 후 복원)
 internal/api         JSON API + 내장 웹 대시보드
 macos/               메뉴바 앱 (AppKit, 서버 바이너리 내장)
@@ -46,6 +51,7 @@ go build -o bin/hole ./cmd/hole
 ./bin/hole                         # DNS :53, 대시보드 http://127.0.0.1:4653
 ./bin/hole -dns 127.0.0.1:5353     # 테스트용 포트
 dig @127.0.0.1 ad.doubleclick.net  # → 0.0.0.0
+./bin/hole doctor                  # 차단이 안 될 때 원인 점검
 ```
 
 | 플래그 | 기본값 | 설명 |

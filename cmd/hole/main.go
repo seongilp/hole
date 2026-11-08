@@ -19,11 +19,17 @@ import (
 
 	"github.com/zihado/hole/internal/api"
 	"github.com/zihado/hole/internal/cache"
+	"github.com/zihado/hole/internal/doctor"
 	"github.com/zihado/hole/internal/engine"
 	"github.com/zihado/hole/internal/lists"
 	"github.com/zihado/hole/internal/resolver"
 	"github.com/zihado/hole/internal/rules"
 	"github.com/zihado/hole/internal/stats"
+)
+
+const (
+	defaultHTTPAddr  = "127.0.0.1:4653"
+	defaultUpstreams = "1.1.1.1:53,8.8.8.8:53"
 )
 
 type options struct {
@@ -42,8 +48,8 @@ func parseFlags() (options, error) {
 	var o options
 	var upstreams, sources string
 	flag.StringVar(&o.dnsAddr, "dns", ":53", "DNS listen address (UDP and TCP)")
-	flag.StringVar(&o.httpAddr, "http", "127.0.0.1:4653", "dashboard/API listen address")
-	flag.StringVar(&upstreams, "upstream", "1.1.1.1:53,8.8.8.8:53", "comma-separated upstream DNS servers, tried in order")
+	flag.StringVar(&o.httpAddr, "http", defaultHTTPAddr, "dashboard/API listen address")
+	flag.StringVar(&upstreams, "upstream", defaultUpstreams, "comma-separated upstream DNS servers, tried in order")
 	flag.StringVar(&sources, "lists", strings.Join(lists.DefaultSources, ","), "comma-separated block list URLs or file paths")
 	flag.StringVar(&o.dataDir, "data", "data", "directory for persisted user rules")
 	flag.DurationVar(&o.refresh, "refresh", 24*time.Hour, "block list refresh interval")
@@ -78,6 +84,10 @@ func splitList(s string) []string {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "doctor" {
+		os.Exit(runDoctor(os.Args[2:]))
+	}
+
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	slog.SetDefault(logger)
 
@@ -197,4 +207,29 @@ func saveStats(rec *stats.Recorder, path string, logger *slog.Logger) {
 	if err := rec.Save(path); err != nil {
 		logger.Error("save stats failed", "path", path, "err", err)
 	}
+}
+
+// runDoctor implements `hole doctor`: diagnoses why ads might not be blocked.
+func runDoctor(args []string) int {
+	fs := flag.NewFlagSet("doctor", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintln(fs.Output(), "usage: hole doctor [flags]\n\n광고가 왜 안 막히는지 점검합니다.")
+		fs.PrintDefaults()
+	}
+	dnsAddr := fs.String("dns", "127.0.0.1:53", "Hole DNS address to probe")
+	httpAddr := fs.String("http", defaultHTTPAddr, "Hole dashboard/API address")
+	upstreams := fs.String("upstream", defaultUpstreams, "upstream DNS servers to probe")
+	_ = fs.Parse(args)
+
+	home, _ := os.UserHomeDir()
+	results := doctor.Run(context.Background(), doctor.Config{
+		DNSAddr:   *dnsAddr,
+		HTTPAddr:  *httpAddr,
+		Upstreams: splitList(*upstreams),
+		Home:      home,
+	})
+	if !doctor.Print(os.Stdout, results) {
+		return 1
+	}
+	return 0
 }
