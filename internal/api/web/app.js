@@ -259,5 +259,5 @@ async function runBlockTest() {
   }
 }
 
+// Manual only: the test contacts outside hosts, so it never runs without a click.
 $("run-test").addEventListener("click", runBlockTest);
-runBlockTest();
