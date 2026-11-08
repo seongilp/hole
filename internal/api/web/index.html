@@ -21,7 +21,21 @@
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
   .tile .label { color:var(--muted); font-size:12px; }
   .tile .value { font-size:26px; font-weight:600; font-variant-numeric:tabular-nums; }
-  .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px; }
+  .grid3 { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; align-items:start; }
+  /* Korean labels must not break per character in narrow cells. */
+  th, button, select, .pill { white-space:nowrap; }
+  .compact-ends td:first-child, .compact-ends th:first-child,
+  .compact-ends td:last-child, .compact-ends th:last-child { width:1%; white-space:nowrap; }
+  #rule-form { margin-bottom:8px; }
+  .top th:last-child { text-align:right; }
+  /* Query log scrolls sideways on phones instead of crushing the domain column. */
+  #queries { min-width:640px; }
+  main > *, .grid3 > * { min-width:0; } /* let wide tables scroll inside their card */
+  @media (max-width: 600px) {
+    .tiles { grid-template-columns:repeat(2, 1fr); }
+    .tile:last-child:nth-child(odd) { grid-column:1 / -1; }
+  }
+  .empty { color:var(--muted); font-size:13px; padding:8px 4px; }
   h2 { font-size:14px; margin:0 0 8px; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   td, th { text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); }
@@ -64,19 +78,20 @@
     <div class="card tile"><div class="label">차단 도메인 수</div><div class="value" id="t-domains">–</div></div>
   </section>
 
-  <section class="grid2">
-    <div class="card"><h2>많이 차단된 도메인</h2><table id="top-blocked"></table></div>
-    <div class="card"><h2>많이 조회된 도메인</h2><table id="top-allowed"></table></div>
-    <div class="card"><h2>클라이언트</h2><table id="top-clients"></table></div>
-    <div class="card">
-      <h2>사용자 규칙</h2>
-      <form id="rule-form">
-        <select id="rule-kind"><option value="deny">차단</option><option value="allow">허용</option></select>
-        <input type="text" id="rule-domain" placeholder="example.com" required>
-        <button class="primary" type="submit">추가</button>
-      </form>
-      <table id="rules"></table>
-    </div>
+  <section class="grid3">
+    <div class="card"><h2>많이 차단된 도메인</h2><table id="top-blocked" class="top"></table></div>
+    <div class="card"><h2>많이 조회된 도메인</h2><table id="top-allowed" class="top"></table></div>
+    <div class="card"><h2>클라이언트</h2><table id="top-clients" class="top"></table></div>
+  </section>
+
+  <section class="card">
+    <h2>사용자 규칙</h2>
+    <form id="rule-form">
+      <select id="rule-kind"><option value="deny">차단</option><option value="allow">허용</option></select>
+      <input type="text" id="rule-domain" placeholder="example.com" required>
+      <button class="primary" type="submit">추가</button>
+    </form>
+    <table id="rules" class="compact-ends"></table>
   </section>
 
   <section class="card">

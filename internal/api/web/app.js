@@ -40,16 +40,24 @@ function cell(text, cls) {
   return td;
 }
 
-function renderRows(table, headers, rows) {
+function renderRows(table, headers, rows, emptyText = "아직 데이터 없음") {
   table.replaceChildren();
+  if (rows.length === 0) {
+    const tr = document.createElement("tr");
+    const td = cell(emptyText, "empty");
+    td.colSpan = headers.length;
+    tr.append(td);
+    table.append(tr);
+    return;
+  }
   const head = document.createElement("tr");
   headers.forEach((h) => { const th = document.createElement("th"); th.textContent = h; head.append(th); });
   table.append(head);
   rows.forEach((cells) => { const tr = document.createElement("tr"); tr.append(...cells); table.append(tr); });
 }
 
-function renderTop(table, items) {
-  renderRows(table, ["도메인", "횟수"], (items || []).map((c) => [cell(c.name, "domain"), cell(fmt.format(c.count), "num")]));
+function renderTop(table, items, label = "도메인") {
+  renderRows(table, [label, "횟수"], (items || []).map((c) => [cell(c.name, "domain"), cell(fmt.format(c.count), "num")]));
 }
 
 function renderStatus(st) {
@@ -69,7 +77,7 @@ function renderStats(s) {
   $("t-cached").textContent = fmt.format(s.cached);
   renderTop($("top-blocked"), s.top_blocked);
   renderTop($("top-allowed"), s.top_allowed);
-  renderTop($("top-clients"), s.top_clients);
+  renderTop($("top-clients"), s.top_clients, "클라이언트");
 }
 
 function renderQueries(qs) {
@@ -97,7 +105,7 @@ function renderRules(r) {
       rows.push([cell(label), cell(d, "domain"), actions]);
     }
   }
-  renderRows($("rules"), ["종류", "도메인", ""], rows);
+  renderRows($("rules"), ["종류", "도메인", ""], rows, "추가한 규칙이 없습니다");
 }
 
 async function removeRule(kind, domain) {

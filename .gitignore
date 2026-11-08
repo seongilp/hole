@@ -2,3 +2,4 @@ bin/
 data/
 macos/.build/
 macos/Hole.app/
+.gstack/
