@@ -15,6 +15,21 @@ NOTARY_PROFILE="${APP_NAME}-notary"
 
 ./build.sh
 
+if ! xcrun notarytool history --keychain-profile "${NOTARY_PROFILE}" >/dev/null 2>&1; then
+    echo "공증 키체인 프로파일 '${NOTARY_PROFILE}' 없음 — 상단 주석 참고" >&2
+    exit 1
+fi
+
+# Staple the ticket to the .app itself, not only the DMG. Hole points macOS DNS at
+# itself, so Gatekeeper's online ticket lookup can deadlock (no DNS until Hole runs).
+# A stapled app is verified offline.
+echo "==> 앱 공증 (완료까지 대기)"
+APP_ZIP=$(mktemp -d)/${APP_NAME}.zip
+ditto -c -k --keepParent "${APP_BUNDLE}" "${APP_ZIP}"
+xcrun notarytool submit "${APP_ZIP}" --keychain-profile "${NOTARY_PROFILE}" --wait
+xcrun stapler staple "${APP_BUNDLE}"
+rm -f "${APP_ZIP}"
+
 echo "==> DMG 생성: ${DMG}"
 STAGING=$(mktemp -d)
 cp -R "${APP_BUNDLE}" "${STAGING}/"
@@ -29,16 +44,12 @@ if [ -n "${DEV_ID}" ]; then
     codesign --force --timestamp --sign "${DEV_ID}" "${DMG}"
 fi
 
-if xcrun notarytool history --keychain-profile "${NOTARY_PROFILE}" >/dev/null 2>&1; then
-    echo "==> 공증 제출 (완료까지 대기)"
-    xcrun notarytool submit "${DMG}" --keychain-profile "${NOTARY_PROFILE}" --wait
-    echo "==> 스테이플"
-    xcrun stapler staple "${DMG}"
-else
-    echo "==> 공증 스킵: 키체인 프로파일 '${NOTARY_PROFILE}' 없음"
-fi
+echo "==> DMG 공증 (완료까지 대기)"
+xcrun notarytool submit "${DMG}" --keychain-profile "${NOTARY_PROFILE}" --wait
+xcrun stapler staple "${DMG}"
 
 echo "==> 검증"
+xcrun stapler validate "${APP_BUNDLE}"
 codesign --verify --verbose=2 "${DMG}" 2>&1 || true
 spctl --assess --type open --context context:primary-signature -v "${DMG}" 2>&1 || true
 

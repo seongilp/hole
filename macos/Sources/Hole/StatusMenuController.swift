@@ -313,19 +313,33 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         }
     }
 
+    private static let startupTimeout: TimeInterval = 10
+
     private func startServer() {
-        do {
-            try server.start(dnsAddr: Settings.dnsAddr, httpAddr: Settings.httpAddr) { [weak self] message in
-                self?.state = .offline(message)
-                self?.render()
+        state = .loading
+        render()
+        server.start(dnsAddr: Settings.dnsAddr, httpAddr: Settings.httpAddr, onExit: { [weak self] message in
+            self?.state = .offline(message)
+            self?.render()
+        }, completion: { [weak self] error in
+            guard let self else { return }
+            if let error {
+                self.state = .offline("서버 시작 실패: \(error.localizedDescription)")
+                self.render()
+                return
             }
-            state = .loading
-            render()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in self?.poll() }
-        } catch {
-            state = .offline("서버 시작 실패: \(error.localizedDescription)")
-            render()
-        }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.startupTimeout) { [weak self] in
+                self?.warnIfStillStarting()
+            }
+        })
+    }
+
+    /// A server that was launched but never answers is usually stuck in a macOS security check.
+    private func warnIfStillStarting() {
+        guard server.isRunning, !isOnline else { return }
+        state = .offline("서버가 응답하지 않음 — 로그 확인")
+        render()
     }
 
     @objc private func toggleLoginItem() {

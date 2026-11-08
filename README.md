@@ -13,7 +13,9 @@ brew install --cask seongilp/tap/hole
 
 또는 [Releases](https://github.com/seongilp/hole/releases)에서 DMG를 받아 설치합니다. Apple 공증을 받은 유니버설 앱(Apple Silicon + Intel, macOS 13 이상)입니다.
 
-실행하면 메뉴바에 🛡 아이콘이 생기고 DNS 서버(`:53`)가 함께 뜹니다. 그다음 Mac의 DNS를 Hole로 지정합니다.
+**처음 한 번은 응용 프로그램 폴더에서 Hole을 직접 열고** "인터넷에서 다운로드한 앱" 확인창에서 "열기"를 누르세요. 승인 전에는 macOS가 내장 서버 실행을 막아 둡니다.
+
+메뉴바에 🛡 아이콘과 차단 비율이 보이면 DNS 서버(`:53`)가 뜬 것입니다. **그다음** Mac의 DNS를 Hole로 지정합니다.
 
 ```bash
 networksetup -setdnsservers Wi-Fi 127.0.0.1        # 유선이면 해당 서비스 이름으로
