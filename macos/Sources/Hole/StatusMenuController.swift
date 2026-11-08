@@ -29,6 +29,12 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private var resumeTask: Task<Void, Never>?
     private var polling = false
     private var autoStartAttempted = false
+    private var crashRestarts = 0
+    private static let maxCrashRestarts = 3
+    private static let crashRestartDelay: TimeInterval = 2
+    private var dnsOnHole: Bool?   // nil until first checked
+    private var dnsBusy = false
+    private let dnsQueue = DispatchQueue(label: "com.zihado.Hole.dns")
 
     // Menu items updated in place on every poll.
     private let stateItem = NSMenuItem()
@@ -39,6 +45,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private let pauseItem = NSMenuItem(title: "일시 정지", action: nil, keyEquivalent: "")
     private let refreshItem = NSMenuItem()
     private let serverItem = NSMenuItem()
+    private let dnsItem = NSMenuItem()
     private let loginItem = NSMenuItem()
 
     init(client: HoleClient, server: ServerProcess) {
@@ -48,6 +55,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     }
 
     func start() {
+        checkDNS()
         statusItem.button?.imagePosition = .imageLeading
         statusItem.menu = buildMenu()
         render()
@@ -90,6 +98,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         pauseItem.submenu = pauseMenu
         menu.addItem(pauseItem)
 
+        dnsItem.title = "이 Mac의 DNS를 Hole로 지정"
+        dnsItem.target = self
+        dnsItem.action = #selector(toggleDNS)
+        menu.addItem(dnsItem)
+
         refreshItem.title = "차단 목록 갱신"
         refreshItem.target = self
         refreshItem.action = #selector(refreshLists)
@@ -120,6 +133,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        checkDNS()
         poll()
     }
 
@@ -134,6 +148,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
                 async let status = client.status()
                 async let stats = client.stats()
                 state = .online(try await status, try await stats)
+                crashRestarts = 0
+                reapplyDNSIfNeeded()
             } catch {
                 state = .offline(server.lastExitMessage ?? error.localizedDescription)
                 autoStartIfNeeded(error)
@@ -159,22 +175,20 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     private func renderButton() {
         guard let button = statusItem.button else { return }
-        let symbol: String
+        let icon: StatusIcon.Kind
         var title = ""
         switch state {
         case .loading:
-            symbol = "shield"
+            icon = .connecting
         case .offline:
-            symbol = "exclamationmark.shield"
+            icon = .problem
         case .online(let status, let stats):
-            symbol = status.enabled ? "shield.lefthalf.filled" : "shield.slash"
+            icon = status.enabled ? .blocking : .paused
             if status.enabled && stats.total > 0 {
                 title = String(format: " %.0f%%", stats.blockedPercent)
             }
         }
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Hole")
-        image?.isTemplate = true
-        button.image = image
+        button.image = StatusIcon.image(icon)
         button.title = title
         button.toolTip = stateItem.title
     }
@@ -195,6 +209,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             renderTopBlocked(stats.topBlocked)
             setVisible(stats: true)
         }
+        renderDNSItem()
         let running = server.isRunning
         serverItem.title = running ? "내장 서버 중지" : "내장 서버 시작"
         serverItem.isEnabled = running || !isOnline
@@ -305,6 +320,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     @objc private func toggleServer() {
         if server.isRunning {
+            releaseDNSAfterServerExit()
             server.stop()
             state = .offline("내장 서버 중지됨")
             render()
@@ -321,6 +337,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         server.start(dnsAddr: Settings.dnsAddr, httpAddr: Settings.httpAddr, onExit: { [weak self] message in
             self?.state = .offline(message)
             self?.render()
+            self?.releaseDNSAfterServerExit()
+            self?.restartAfterCrash()
         }, completion: { [weak self] error in
             guard let self else { return }
             if let error {
@@ -335,11 +353,83 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         })
     }
 
+    /// Unexpected exits only: a user-initiated stop clears the exit handler first.
+    private func restartAfterCrash() {
+        guard Settings.autoStartServer, crashRestarts < Self.maxCrashRestarts else { return }
+        crashRestarts += 1
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.crashRestartDelay) { [weak self] in
+            guard let self, !self.server.isRunning, !self.isOnline else { return }
+            self.startServer()
+        }
+    }
+
     /// A server that was launched but never answers is usually stuck in a macOS security check.
     private func warnIfStillStarting() {
         guard server.isRunning, !isOnline else { return }
         state = .offline("서버가 응답하지 않음 — 로그 확인")
         render()
+    }
+
+    // MARK: - System DNS
+
+    private func renderDNSItem() {
+        let on = dnsOnHole == true
+        dnsItem.state = on ? .on : .off
+        dnsItem.title = dnsBusy ? "DNS 변경 중…" : "이 Mac의 DNS를 Hole로 지정"
+        // Never point DNS at a server that is not answering: that would cut off the Mac.
+        dnsItem.isEnabled = !dnsBusy && (on || isOnline)
+    }
+
+    private func checkDNS() {
+        guard !dnsBusy else { return }
+        dnsQueue.async { [weak self] in
+            let on = DNSManager.isPointedAtHole()
+            DispatchQueue.main.async {
+                self?.dnsOnHole = on
+                self?.renderDNSItem()
+            }
+        }
+    }
+
+    @objc private func toggleDNS() {
+        let turnOn = dnsOnHole != true
+        Settings.manageDNS = turnOn
+        changeDNS(toHole: turnOn, reportErrors: true)
+    }
+
+    /// Re-points DNS at Hole once the server answers again (after launch or a restart).
+    private func reapplyDNSIfNeeded() {
+        guard Settings.manageDNS, dnsOnHole == false, !dnsBusy else { return }
+        changeDNS(toHole: true, reportErrors: false)
+    }
+
+    /// The server is gone: hand DNS back so the Mac keeps resolving names.
+    private func releaseDNSAfterServerExit() {
+        guard Settings.manageDNS, dnsOnHole != false else { return }
+        changeDNS(toHole: false, reportErrors: false)
+    }
+
+    private func changeDNS(toHole: Bool, reportErrors: Bool) {
+        dnsBusy = true
+        renderDNSItem()
+        dnsQueue.async { [weak self] in
+            var failure: Error?
+            do {
+                try toHole ? DNSManager.pointAtHole() : DNSManager.restore()
+            } catch {
+                failure = error
+            }
+            let on = DNSManager.isPointedAtHole()
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.dnsBusy = false
+                self.dnsOnHole = on
+                self.renderDNSItem()
+                if let failure, reportErrors {
+                    self.showError("DNS 변경 실패", failure)
+                }
+            }
+        }
     }
 
     @objc private func toggleLoginItem() {

@@ -12,6 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // Restore DNS first: with DNS on 127.0.0.1 and no server, this Mac loses name resolution.
+        if Settings.manageDNS {
+            try? DNSManager.restore()
+        }
         // Only stops a server this app launched; an external one keeps running.
         server.stop()
     }
