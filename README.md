@@ -34,7 +34,7 @@ internal/cache       TTL 기반 응답 캐시
 internal/lists       차단 목록 다운로드(URL/파일)
 internal/rules       사용자 허용/차단 규칙 (JSON, atomic write)
 internal/engine      목록 + 규칙 → matcher 교체, 주기적 갱신
-internal/stats       쿼리 통계, 최근 쿼리 로그
+internal/stats       쿼리 통계, 최근 쿼리 로그 (1분마다·종료 시 저장, 재시작 후 복원)
 internal/api         JSON API + 내장 웹 대시보드
 macos/               메뉴바 앱 (AppKit, 서버 바이너리 내장)
 ```
@@ -54,7 +54,7 @@ dig @127.0.0.1 ad.doubleclick.net  # → 0.0.0.0
 | `-http` | `127.0.0.1:4653` | 대시보드/API 주소 |
 | `-upstream` | `1.1.1.1:53,8.8.8.8:53` | 업스트림 DNS, 순서대로 시도 |
 | `-lists` | StevenBlack hosts | 차단 목록 URL/파일 (쉼표 구분) |
-| `-data` | `data` | 사용자 규칙 저장 디렉토리 |
+| `-data` | `data` | 사용자 규칙(`rules.json`)과 통계(`stats.json`) 저장 디렉토리 |
 | `-refresh` | `24h` | 목록 갱신 주기 |
 
 `HOLE_API_TOKEN` 환경변수를 지정하면 변경 API(POST/DELETE)에 `Authorization: Bearer <token>`이 필요합니다. 대시보드를 LAN에 열 때(`-http 0.0.0.0:4653`)는 꼭 지정하세요.

@@ -102,6 +102,10 @@ func run(o options, logger *slog.Logger) error {
 		return fmt.Errorf("load rules: %w", err)
 	}
 	rec := stats.NewRecorder(o.logSize)
+	statsPath := filepath.Join(o.dataDir, "stats.json")
+	if err := rec.Load(statsPath); err != nil {
+		logger.Warn("previous stats not restored, starting fresh", "err", err)
+	}
 	c := cache.New(o.cacheSize, time.Now)
 	handler := resolver.New(resolver.Config{
 		Upstreams: o.upstreams,
@@ -127,6 +131,7 @@ func run(o options, logger *slog.Logger) error {
 		}
 	}()
 	go eng.RunRefreshLoop(ctx, o.refresh)
+	go saveStatsLoop(ctx, rec, statsPath, statsSaveInterval, logger)
 
 	errCh := make(chan error, 3)
 	dnsServers := []*dns.Server{
@@ -168,5 +173,28 @@ func run(o options, logger *slog.Logger) error {
 	for _, s := range dnsServers {
 		_ = s.ShutdownContext(shutdownCtx)
 	}
+	saveStats(rec, statsPath, logger)
 	return runErr
+}
+
+// statsSaveInterval bounds how many queries are lost if the server is killed without SIGTERM.
+const statsSaveInterval = time.Minute
+
+func saveStatsLoop(ctx context.Context, rec *stats.Recorder, path string, every time.Duration, logger *slog.Logger) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			saveStats(rec, path, logger)
+		}
+	}
+}
+
+func saveStats(rec *stats.Recorder, path string, logger *slog.Logger) {
+	if err := rec.Save(path); err != nil {
+		logger.Error("save stats failed", "path", path, "err", err)
+	}
 }
