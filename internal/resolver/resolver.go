@@ -103,6 +103,9 @@ func (h *Handler) resolve(r *dns.Msg, q dns.Question) (*dns.Msg, stats.Status) {
 		return blockedReply(r, q), stats.StatusBlocked
 	}
 	if cached, ok := h.cache.Get(q.Name, q.Qtype); ok {
+		if h.cnameBlocked(cached) {
+			return blockedReply(r, q), stats.StatusBlocked
+		}
 		return cached, stats.StatusCached
 	}
 	resp, err := h.forward(r)
@@ -110,8 +113,29 @@ func (h *Handler) resolve(r *dns.Msg, q dns.Question) (*dns.Msg, stats.Status) {
 		h.log.Warn("upstream lookup failed", "domain", q.Name, "err", err)
 		return refuse(r, dns.RcodeServerFailure), stats.StatusError
 	}
+	// Cache the real answer; the CNAME check runs on every hit so rule
+	// changes apply immediately.
 	h.cache.Set(q.Name, q.Qtype, resp)
+	if h.cnameBlocked(resp) {
+		return blockedReply(r, q), stats.StatusBlocked
+	}
 	return resp, stats.StatusForwarded
+}
+
+// cnameBlocked reports whether any CNAME target in the answer is blocked.
+// This defeats CNAME cloaking, where an unlisted name (serv.ds.kakao.com)
+// aliases a listed ad server (display-ad-*.kgslb.com).
+func (h *Handler) cnameBlocked(resp *dns.Msg) bool {
+	if !h.Enabled() {
+		return false
+	}
+	m := h.Matcher()
+	for _, rr := range resp.Answer {
+		if c, ok := rr.(*dns.CNAME); ok && m.Blocked(c.Target) {
+			return true
+		}
+	}
+	return false
 }
 
 // forward tries each upstream in order, retrying over TCP on truncation.

@@ -83,16 +83,15 @@ func query(t *testing.T, addr, name string, qtype uint16) *dns.Msg {
 
 func firstIP(t *testing.T, m *dns.Msg) string {
 	t.Helper()
-	if len(m.Answer) == 0 {
-		t.Fatalf("no answer in %v", m)
+	for _, rr := range m.Answer {
+		switch rr := rr.(type) {
+		case *dns.A:
+			return rr.A.String()
+		case *dns.AAAA:
+			return rr.AAAA.String()
+		}
 	}
-	switch rr := m.Answer[0].(type) {
-	case *dns.A:
-		return rr.A.String()
-	case *dns.AAAA:
-		return rr.AAAA.String()
-	}
-	t.Fatalf("unexpected answer type %T", m.Answer[0])
+	t.Fatalf("no A/AAAA answer in %v", m)
 	return ""
 }
 
@@ -181,6 +180,56 @@ func TestHandler_ServfailWhenAllUpstreamsFail(t *testing.T) {
 	}
 	if s := f.stats.Snapshot(1); s.Errors != 1 {
 		t.Errorf("Errors = %d, want 1", s.Errors)
+	}
+}
+
+// cnameUpstream answers every query with "<name> CNAME <target>" plus an A
+// record for target, like a CDN-cloaked ad server.
+func cnameUpstream(t *testing.T, target string) string {
+	return startDNS(t, dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
+		m := new(dns.Msg)
+		m.SetReply(r)
+		cname, _ := dns.NewRR(r.Question[0].Name + " 600 IN CNAME " + dns.Fqdn(target))
+		a, _ := dns.NewRR(dns.Fqdn(target) + " 30 IN A 121.53.223.45")
+		m.Answer = []dns.RR{cname, a}
+		_ = w.WriteMsg(m)
+	}))
+}
+
+func TestHandler_BlocksCNAMECloakedDomain(t *testing.T) {
+	up := cnameUpstream(t, "display-ad.cdn.example")
+	f := newFixture(t, []string{"display-ad.cdn.example"}, nil, up)
+
+	resp := query(t, f.addr, "serv.ds.example.com", dns.TypeA)
+	if ip := firstIP(t, resp); ip != "0.0.0.0" {
+		t.Errorf("answer = %s, want 0.0.0.0 for CNAME pointing at blocked domain", ip)
+	}
+	if s := f.stats.Snapshot(1); s.Blocked != 1 {
+		t.Errorf("Blocked = %d, want 1", s.Blocked)
+	}
+
+	// Second lookup must stay blocked (not served from cache as the real answer).
+	if ip := firstIP(t, query(t, f.addr, "serv.ds.example.com", dns.TypeA)); ip != "0.0.0.0" {
+		t.Errorf("repeat answer = %s, want 0.0.0.0", ip)
+	}
+}
+
+func TestHandler_CNAMEToAllowedDomainPassesThrough(t *testing.T) {
+	up := cnameUpstream(t, "cdn.example")
+	f := newFixture(t, []string{"ads.example"}, nil, up)
+
+	if ip := firstIP(t, query(t, f.addr, "www.example.com", dns.TypeA)); ip != "121.53.223.45" {
+		t.Errorf("answer = %s, want upstream IP for harmless CNAME", ip)
+	}
+}
+
+func TestHandler_CNAMEInspectionRespectsDisabled(t *testing.T) {
+	up := cnameUpstream(t, "display-ad.cdn.example")
+	f := newFixture(t, []string{"display-ad.cdn.example"}, nil, up)
+	f.handler.SetEnabled(false)
+
+	if ip := firstIP(t, query(t, f.addr, "serv.ds.example.com", dns.TypeA)); ip != "121.53.223.45" {
+		t.Errorf("answer = %s, want upstream IP while blocking disabled", ip)
 	}
 }
 
