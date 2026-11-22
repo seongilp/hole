@@ -1,0 +1,24 @@
+{
+  "name": "hole-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hole 랜딩 페이지 데모: URL을 열어 Hole 차단 목록에 걸리는 호스트를 보여주는 Cloudflare Worker",
+  "scripts": {
+    "build:list": "node scripts/build-blocklist.mjs",
+    "dev": "wrangler dev",
+    "deploy": "npm run build:list && wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/puppeteer": "^2.0.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261121.1",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1",
+    "wrangler": "^4.166.0"
+  }
+}

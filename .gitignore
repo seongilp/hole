@@ -4,3 +4,9 @@ macos/.build/
 macos/Hole.app/
 .gstack/
 *.dmg
+
+# demo worker
+demo/node_modules/
+demo/.wrangler/
+demo/src/blocklist.txt
+demo/src/blocklist-meta.json

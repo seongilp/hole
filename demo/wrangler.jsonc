@@ -1,0 +1,48 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "hole-demo",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-11-21",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"observability": {
+		"enabled": true
+	},
+	// 로컬 `wrangler dev`에서 실제 브라우저를 쓰려면 remote: true가 필요합니다 (로그인 필요).
+	"browser": {
+		"binding": "BROWSER",
+		"remote": true
+	},
+	// id를 생략하면 `wrangler deploy` 때 네임스페이스가 자동 생성됩니다.
+	"kv_namespaces": [
+		{
+			"binding": "SCANS",
+			"id": "4483a97f017e431d92af3a7dc9a536d0"
+		}
+	],
+	// namespace_id는 계정 안에서 고유해야 합니다. period는 10 또는 60만 허용됩니다.
+	"ratelimits": [
+		{
+			"name": "SCAN_LIMITER",
+			"namespace_id": "41017",
+			"simple": {
+				"limit": 5,
+				"period": 60
+			}
+		}
+	],
+	"vars": {
+		"ALLOWED_ORIGINS": "https://seongilp.github.io,http://localhost:8000"
+	},
+	// blocklist.txt를 문자열 모듈로 import 합니다.
+	"rules": [
+		{
+			"type": "Text",
+			"globs": [
+				"**/*.txt"
+			],
+			"fallthrough": true
+		}
+	]
+}
