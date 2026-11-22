@@ -6,9 +6,9 @@
 <title>Hole — Mac 메뉴바 광고 차단 DNS</title>
 <meta name="description" content="Pi-hole처럼 동작하는 macOS 메뉴바 광고 차단기. 앱 하나로 DNS 단계에서 광고와 트래커를 막습니다.">
 <style>
-  :root { --bg:#ffffff; --fg:#0b0d12; --muted:#6b7280; --line:#e5e7eb; --accent:#3b6cf6; --card:#f6f7f9; }
+  :root { --bg:#ffffff; --fg:#0b0d12; --muted:#6b7280; --line:#e5e7eb; --accent:#3b6cf6; --card:#f6f7f9; --block:#c62828; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#0b0d12; --fg:#f3f4f6; --muted:#9ca3af; --line:#1f2430; --accent:#7aa2ff; --card:#141821; }
+    :root { --bg:#0b0d12; --fg:#f3f4f6; --muted:#9ca3af; --line:#1f2430; --accent:#7aa2ff; --card:#141821; --block:#ff8a80; }
   }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--fg);
@@ -20,6 +20,8 @@
   .logo img { width:32px; height:32px; }
   .hero { padding:96px 0 72px; text-align:center; }
   .hero img { width:120px; height:120px; margin-bottom:28px; }
+  h1 s { color:var(--muted); font-weight:500; text-decoration-color:var(--block); text-decoration-thickness:.08em; }
+  .hero .ko { font-size:clamp(22px, 3.2vw, 32px); font-weight:700; letter-spacing:-0.02em; margin:0 0 16px; word-break:keep-all; }
   h1 { word-break:keep-all; font-size:clamp(40px, 7vw, 72px); line-height:1.1; letter-spacing:-0.03em; margin:0 0 20px; }
   .sub { font-size:clamp(18px, 2.4vw, 22px); color:var(--muted); margin:0 auto 40px; max-width:760px; word-break:keep-all; text-wrap:balance; }
   pre { display:inline-block; text-align:left; margin:0; padding:16px 22px; border-radius:14px;
@@ -59,6 +61,90 @@
   .limits ul { margin:0; padding-left:20px; color:var(--muted); }
   .limits li { margin-bottom:8px; }
   .limits b { color:var(--fg); }
+  .demo { padding:0 0 96px; }
+  .demo h2 { font-size:clamp(28px, 4vw, 40px); letter-spacing:-0.02em; margin:0 0 12px; word-break:keep-all; }
+  .demo > p { color:var(--muted); margin:0 0 28px; word-break:keep-all; }
+  .demo :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .picks { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+  .pick { font:inherit; font-size:16px; font-weight:700; cursor:pointer; color:var(--fg); background:var(--card); border:1px solid var(--line);
+          border-radius:14px; padding:18px 10px; text-align:center; overflow-wrap:anywhere; transition:border-color .2s, background .2s, color .2s; }
+  .pick:hover { border-color:var(--accent); }
+  .pick[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent);
+          background:color-mix(in srgb, var(--accent) 8%, var(--card)); }
+  .demo > p.demo-hint { font-size:13px; color:var(--muted); margin:12px 0 0; }
+  .demo-result { margin-top:24px; }
+  .demo-result:empty { display:none; }
+  .d-card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:24px; }
+  .d-status { color:var(--muted); font-size:15px; margin:0 0 14px; }
+  .d-bar { height:6px; border-radius:3px; background:var(--line); overflow:hidden; }
+  .d-bar::before { content:""; display:block; height:100%; width:35%; border-radius:3px; background:var(--accent);
+          animation:d-slide 1.4s ease-in-out infinite; }
+  @keyframes d-slide { from { transform:translateX(-100%); } to { transform:translateX(300%); } }
+  @media (prefers-reduced-motion: reduce) { .d-bar::before { animation:none; width:100%; opacity:.5; } }
+  .d-big { font-size:clamp(22px, 4vw, 32px); font-weight:700; letter-spacing:-0.02em; margin:0 0 4px; word-break:keep-all; }
+  .d-big em { font-style:normal; color:var(--accent); }
+  .d-error { color:var(--block); margin:0; word-break:keep-all; }
+  .d-tiles { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+  .d-tile { background:var(--bg); border:1px solid var(--line); border-radius:14px; padding:14px 16px; min-width:0; }
+  .d-tile-l, .d-tile-s { font-size:13px; color:var(--muted); word-break:keep-all; }
+  .d-tile-v { font-size:clamp(24px, 4vw, 32px); font-weight:700; letter-spacing:-0.02em; line-height:1.2; margin:4px 0 2px;
+              font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+  .d-tile:first-child .d-tile-v { color:var(--accent); }
+  .d-tile.is-unknown .d-tile-v { color:var(--muted); font-size:18px; font-weight:600; letter-spacing:0; }
+  .d-note { font-size:13px; color:var(--muted); margin:12px 0 0; word-break:keep-all; }
+  .d-tools { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin:18px 0; }
+  .d-switch { display:inline-flex; align-items:center; gap:10px; background:none; border:0; padding:4px 0; color:var(--fg);
+              font:inherit; font-weight:700; font-size:16px; cursor:pointer; }
+  .d-switch:disabled { opacity:.55; cursor:progress; }
+  .d-track { position:relative; flex:none; width:46px; height:26px; border-radius:13px; background:var(--muted); transition:background .25s; }
+  .d-track::after { content:""; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:var(--bg);
+                    transition:transform .25s; }
+  .d-switch[aria-checked="true"] .d-track { background:var(--accent); }
+  .d-switch[aria-checked="true"] .d-track::after { transform:translateX(20px); }
+  .d-btn { font:inherit; font-size:14px; color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:999px;
+           padding:6px 16px; cursor:pointer; }
+  .d-btn:hover { border-color:var(--accent); }
+  .d-cmpwrap { margin:0 0 18px; }
+  .d-cmp { --pos:50%; position:relative; aspect-ratio:1280 / 800; border-radius:14px; overflow:hidden; border:1px solid var(--line);
+           background:var(--bg); touch-action:pan-y; cursor:ew-resize; user-select:none; -webkit-user-select:none; }
+  .d-cmp:focus-within { outline:3px solid var(--accent); outline-offset:2px; }
+  .d-cmp img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+  .d-cmp img.top { clip-path:inset(0 0 0 var(--pos)); }
+  .d-cmp-line { position:absolute; top:0; bottom:0; left:var(--pos); width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 0 1px rgba(0,0,0,.3); pointer-events:none; }
+  .d-cmp-knob { position:absolute; top:50%; left:50%; width:36px; height:36px; margin:-18px 0 0 -18px; border-radius:50%; background:#fff;
+                color:#0b0d12; font-size:16px; line-height:36px; text-align:center; box-shadow:0 1px 6px rgba(0,0,0,.4); }
+  .d-cmp-tag { position:absolute; top:10px; padding:3px 10px; border-radius:999px; background:rgba(0,0,0,.7); color:#fff; font-size:12px; pointer-events:none; }
+  .d-cmp-tag.l { left:10px; }
+  .d-cmp-tag.r { right:10px; }
+  .d-cmp input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; pointer-events:none; }
+  .d-cap { font-size:13px; color:var(--muted); margin:10px 0 0; word-break:keep-all; }
+  .d-log { max-height:360px; overflow-y:auto; border-top:1px solid var(--line); padding-right:4px; }
+  .d-list { list-style:none; margin:0; padding:0; }
+  .d-row { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); font-size:15px; }
+  .d-row:last-child { border-bottom:0; }
+  .d-row.enter { animation:d-in .2s ease-out; }
+  @keyframes d-in { from { opacity:0; transform:translateY(4px); } }
+  .d-dom { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap:anywhere; min-width:0;
+           text-decoration:line-through; text-decoration-color:transparent; transition:color .3s, text-decoration-color .3s; }
+  .is-blocked .d-dom { color:var(--block); text-decoration-color:var(--block); }
+  .d-count { color:var(--muted); white-space:nowrap; }
+  .d-badge { display:none; color:var(--block); font-size:13px; font-weight:700; margin-right:8px; }
+  .is-blocked .d-badge { display:inline; }
+  .sr-only { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+  .d-foot { margin:18px 0 0; font-size:13px; color:var(--muted); overflow-wrap:anywhere; }
+  .demo .note { font-size:14px; margin:16px 0 0; color:var(--muted); word-break:keep-all; }
+  @media (max-width:520px) {
+    .picks { grid-template-columns:1fr 1fr; }
+    .pick { font-size:14px; padding:16px 6px; }
+    .d-tiles { grid-template-columns:1fr 1fr; }
+    .d-tile:nth-child(3) { grid-column:1 / -1; }
+    .d-tile { padding:12px; }
+    .d-tile-v { font-size:22px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .d-row.enter { animation:none; }
+    .d-dom, .d-track, .d-track::after, .pick { transition:none; }
+  }
   footer { border-top:1px solid var(--line); padding:28px 0; color:var(--muted); font-size:14px; text-align:center; }
 </style>
 </head>
@@ -71,10 +157,20 @@
 
   <section class="hero">
     <img src="icon.png" alt="Hole 아이콘">
-    <h1>광고는 구멍 속으로.</h1>
+    <h1><s>Fire</s> Ads in the Hole.</h1>
+    <p class="ko">광고는 구멍 속으로.</p>
     <p class="sub">Pi-hole을 Mac 메뉴바에. 브라우저도, 앱도 광고 없이.</p>
     <pre><code>brew install --cask seongilp/tap/hole</code></pre>
     <p class="alt">또는 <a href="https://github.com/seongilp/hole/releases/latest">DMG 다운로드</a> · Apple 공증 · 데이터 수집 없음 · Apple Silicon + Intel</p>
+  </section>
+
+  <section class="demo" id="demo">
+    <h2>어떤 사이트에서 얼마나 막을까요?</h2>
+    <p>사이트를 골라 보세요. 실제로 페이지를 열어 기록해 둔 접속 내역으로, Hole이 막는 광고·추적 서버를 보여 드립니다.</p>
+    <div class="picks" id="demo-picks" role="group" aria-label="사이트 선택"></div>
+    <p class="demo-hint">미리 검사해 둔 결과입니다. 사이트를 고르면 바로 보여 드려요.</p>
+    <div class="demo-result" id="demo-result" aria-live="polite"></div>
+    <p class="note">DNS 차단 기준이라 본문과 같은 도메인에서 오는 광고(YouTube 등)는 포함되지 않습니다. 결과는 미리 기록해 둔 것이며, 검사한 날짜는 각 결과 아래에 표시됩니다.</p>
   </section>
 
   <section class="features">
@@ -136,6 +232,7 @@
       <li><b>본문과 같은 도메인에서 오는 광고</b>: YouTube 동영상 광고, 카카오톡 "오늘의 카카오" 같은 자체 배너.</li>
       <li><b>빈 광고 자리</b>: 광고는 막지만 그 자리는 남을 수 있습니다. 숨기려면 브라우저 확장과 함께 쓰세요.</li>
       <li><b>보안 DNS(DoH)를 켠 브라우저</b>: Hole을 거치지 않으므로 꺼야 합니다.</li>
+      <li><b>DNS까지 맡는 VPN</b>: Cloudflare WARP 기본 모드처럼 DNS를 직접 처리하면 Hole을 우회합니다. WARP는 Traffic only 모드로 바꾸면 됩니다.</li>
     </ul>
   </section>
 
@@ -143,10 +240,494 @@
     <h2>설치 후 클릭 한 번이면 끝.</h2>
     <p>메뉴바 방패에서 <b>"이 Mac의 DNS를 Hole로 지정"</b>을 켜세요. 구멍에 초록 불이 들어오면 차단 중입니다.</p>
     <p>Hole을 끄거나 서버가 멈추면 DNS는 자동으로 원래대로 돌아갑니다. 인터넷이 끊길 걱정이 없습니다.</p>
+    <p style="margin-top:28px"><b>Cloudflare WARP</b>와 함께 쓸 수 있습니다. DNS를 켤 때 Hole이 WARP를 Traffic only 모드로 바꿀지 물어봅니다. 트래픽은 WARP가, 광고 차단은 Hole이 맡습니다.</p>
     <p style="margin-top:28px">광고가 그대로 보이나요? 원인을 찾아 줍니다.</p>
     <pre><code>hole doctor</code></pre>
   </section>
 </div>
 <footer>Hole · MIT License · <a href="https://github.com/seongilp/hole" style="color:inherit">github.com/seongilp/hole</a></footer>
+<script>
+(function () {
+  "use strict";
+  const STATIC_TIMEOUT_MS = 15000;
+  const EXAMPLES = [
+    { label: "www.daum.net", file: "demo/daum.json" },
+    { label: "www.ppomppu.co.kr", file: "demo/ppomppu.json" },
+    { label: "www.inven.co.kr", file: "demo/inven.json" },
+    { label: "www.mk.co.kr", file: "demo/mk.json" }
+  ];
+  const COUNT_UP_MS = 800;
+  const REPLAY_MAX_MS = 3800;
+  const REPLAY_STEP_MS = 70;
+  const REPLAY_MAX_INTERVAL_MS = 140;
+  const SLIDER_START = 50;
+  const KB = 1024;
+  const T = {
+    network: "결과를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    zero: "이 페이지에서는 차단할 광고·추적 서버를 찾지 못했습니다",
+    blockedBadge: "차단",
+    loadingStatic: "불러오는 중…",
+    exampleLabel: "미리 검사해 둔 예시",
+    unmeasurable: "측정 불가",
+    switchName: "Hole",
+    switchOn: "Hole 켜짐",
+    switchOff: "Hole 꺼짐",
+    replay: "다시 보기",
+    logName: "요청 기록",
+    shotBefore: "Hole 꺼짐",
+    shotAfter: "Hole 켜짐",
+    shotBeforeAlt: "Hole 없이 연 페이지 화면",
+    shotAfterAlt: "Hole을 켜고 연 페이지 화면",
+    sliderName: "Hole 꺼짐과 켜짐 화면 비교",
+    sliderValue: (p) => "Hole 켜짐 화면 " + p + "% 표시",
+    caption: "DNS 차단은 광고를 불러오지 않을 뿐이라 광고 자리는 빈칸으로 남을 수 있습니다.",
+    noteSized: (n) => "크기를 확인한 요청 " + n + "개 기준 최소값입니다. 크기를 공개하지 않는 서버가 많아 실제로는 더 큽니다.",
+    noteBase: "크기를 공개하지 않는 서버가 많아 실제 용량은 표시된 값보다 큽니다.",
+    noteNone: "크기를 공개하지 않는 서버가 많아 이 페이지의 용량은 측정하지 못했습니다.",
+    summary: (t, b, p) => "요청 " + t + "개 중 " + b + "개 차단 (" + p + "%)"
+  };
+
+  const picks = document.getElementById("demo-picks");
+  const result = document.getElementById("demo-result");
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const pending = { timers: new Set(), frames: new Set() };
+  let requestId = 0;
+  let activeController = null;
+
+  /* ---------- helpers ---------- */
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function num(v) { return Number.isFinite(v) ? v : 0; }
+
+  function hashKey(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 16777619); }
+    return h >>> 0;
+  }
+
+  function formatBytes(n) {
+    if (n < KB * KB) return (n / KB).toFixed(1) + " KB";
+    return (n / (KB * KB)).toFixed(1) + " MB";
+  }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("ko-KR");
+  }
+
+  const fmtInt = (n) => String(Math.round(n));
+  const fmtServers = (n) => Math.round(n) + "곳";
+  const fmtBytesMin = (n) => "최소 " + formatBytes(n).replace(" ", "\u00a0");
+
+  /* ---------- cancellable timers ---------- */
+  function later(fn, ms) {
+    const id = setTimeout(() => { pending.timers.delete(id); fn(); }, ms);
+    pending.timers.add(id);
+  }
+
+  function nextFrame(fn) {
+    const id = requestAnimationFrame((t) => { pending.frames.delete(id); fn(t); });
+    pending.frames.add(id);
+  }
+
+  function cancelAll() {
+    pending.timers.forEach((id) => { clearTimeout(id); clearInterval(id); });
+    pending.frames.forEach((id) => cancelAnimationFrame(id));
+    pending.timers.clear();
+    pending.frames.clear();
+  }
+
+  function show(...nodes) {
+    cancelAll();
+    result.replaceChildren(...nodes);
+  }
+
+  /* ---------- loading / error ---------- */
+  function showLoadingStatic() {
+    const card = el("div", "d-card");
+    card.append(el("p", "d-status", T.loadingStatic), el("div", "d-bar"));
+    show(card);
+  }
+
+  function showError(message) {
+    const card = el("div", "d-card");
+    card.append(el("p", "d-error", message));
+    show(card);
+  }
+
+  /* ---------- stats and tiles ---------- */
+  function normalizeDomains(data) {
+    const list = Array.isArray(data.domains) ? data.domains : [];
+    return list
+      .filter((d) => d && typeof d.domain === "string")
+      .map((d) => ({ domain: d.domain, count: num(d.count), blocked: d.blocked === true, bytes: num(d.bytes) }))
+      .sort((a, b) => (a.blocked === b.blocked ? b.count - a.count : a.blocked ? -1 : 1));
+  }
+
+  function deriveStats(data, domains) {
+    const bytes = data.bytes && typeof data.bytes === "object" ? data.bytes : {};
+    const known = (v) => (num(v) > 0 ? v : null);
+    return {
+      total: num(data.total),
+      blocked: num(data.blocked),
+      savedBytes: known(bytes.blocked),
+      sized: num(data.sizedRequests),
+      blockedServers: domains.filter((d) => d.blocked).length,
+      servers: domains.length
+    };
+  }
+
+  function tileSpecs(st, on) {
+    if (on) {
+      return [
+        { label: "차단한 요청", sub: st.total + "개 중", target: st.blocked, fmt: fmtInt },
+        { label: "아낀 데이터", sub: "Hole을 켰을 때", target: st.savedBytes, fmt: fmtBytesMin },
+        { label: "광고·추적 서버", sub: "차단됨", target: st.blockedServers, fmt: fmtServers }
+      ];
+    }
+    return [
+      { label: "불러오는 요청", sub: "Hole 없이", target: st.total, fmt: fmtInt },
+      { label: "광고·추적에 쓰인 데이터", sub: "Hole 없이 받는 양", target: st.savedBytes, fmt: fmtBytesMin },
+      { label: "접속하는 서버", sub: "Hole 없이", target: st.servers, fmt: fmtServers }
+    ];
+  }
+
+  function makeTile() {
+    const root = el("div", "d-tile");
+    const tile = { root, label: el("div", "d-tile-l"), value: el("div", "d-tile-v"), sub: el("div", "d-tile-s"), cur: 0, token: 0, fmt: fmtInt };
+    root.append(tile.label, tile.value, tile.sub);
+    return tile;
+  }
+
+  function animateTo(tile, target, animate) {
+    tile.token += 1;
+    const token = tile.token;
+    const from = tile.cur;
+    tile.cur = target;
+    if (!animate || from === target || reduceMotion.matches) { tile.value.textContent = tile.fmt(target); return; }
+    const start = performance.now();
+    const step = (now) => {
+      if (token !== tile.token) return;
+      const p = Math.min(1, Math.max(0, (now - start) / COUNT_UP_MS));
+      tile.value.textContent = tile.fmt(from + (target - from) * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) nextFrame(step);
+    };
+    nextFrame(step);
+  }
+
+  function setTile(tile, spec, animate) {
+    tile.label.textContent = spec.label;
+    tile.sub.textContent = spec.sub;
+    tile.fmt = spec.fmt;
+    const unknown = spec.target === null;
+    tile.root.classList.toggle("is-unknown", unknown);
+    if (unknown) { tile.token += 1; tile.cur = 0; tile.value.textContent = T.unmeasurable; return; }
+    animateTo(tile, spec.target, animate);
+  }
+
+  function setTiles(s, specs, animate) {
+    specs.forEach((spec, i) => setTile(s.tiles[i], spec, animate));
+  }
+
+  function tickTile(tile, n) {
+    tile.token += 1;
+    tile.cur = n;
+    tile.value.textContent = tile.fmt(n);
+  }
+
+  /* ---------- log rows ---------- */
+  function buildRow(d) {
+    const li = el("li", "d-row");
+    const right = el("span", "d-count");
+    const meta = d.count + "회" + (d.bytes > 0 ? " · " + formatBytes(d.bytes) : "");
+    right.append(el("span", "d-badge", T.blockedBadge), document.createTextNode(meta));
+    li.append(el("span", "d-dom", d.domain), right);
+    return li;
+  }
+
+  function buildSession(data) {
+    const domains = normalizeDomains(data);
+    const entries = domains.map((d) => ({ d, li: buildRow(d) }));
+    const replayOrder = entries.slice().sort((a, b) => hashKey(a.d.domain) - hashKey(b.d.domain) || (a.d.domain < b.d.domain ? -1 : 1));
+    return {
+      data, entries, replayOrder, stats: deriveStats(data, domains), on: true,
+      tiles: [makeTile(), makeTile(), makeTile()], live: { blocked: 0, bytes: 0, servers: 0 }
+    };
+  }
+
+  function setBusy(s, busy) {
+    s.switchBtn.disabled = busy;
+    [s.tilesEl, s.logBox].forEach((node) => {
+      if (busy) node.setAttribute("aria-hidden", "true"); else node.removeAttribute("aria-hidden");
+    });
+  }
+
+  function syncSwitch(s) {
+    s.switchBtn.setAttribute("aria-checked", String(s.on));
+    s.switchLabel.textContent = s.on ? T.switchOn : T.switchOff;
+  }
+
+  function applyMode(s, on, animate) {
+    s.on = on;
+    syncSwitch(s);
+    s.entries.forEach((e) => e.li.classList.toggle("is-blocked", on && e.d.blocked));
+    setTiles(s, tileSpecs(s.stats, on), animate);
+  }
+
+  /* ---------- replay ---------- */
+  function renderFinal(s) {
+    s.list.replaceChildren(...s.entries.map((e) => e.li));
+    s.entries.forEach((e) => e.li.classList.remove("enter"));
+    s.logBox.scrollTop = 0;
+    setBusy(s, false);
+    applyMode(s, true, false);
+  }
+
+  function tickLive(s, d) {
+    const st = s.stats;
+    s.live.blocked += d.count;
+    s.live.bytes += d.bytes;
+    s.live.servers += 1;
+    tickTile(s.tiles[0], Math.min(s.live.blocked, st.blocked));
+    if (st.savedBytes !== null) tickTile(s.tiles[1], Math.min(s.live.bytes, st.savedBytes));
+    tickTile(s.tiles[2], s.live.servers);
+  }
+
+  function landRow(s, e) {
+    e.li.classList.add("enter");
+    s.list.append(e.li);
+    if (!e.d.blocked) return;
+    void e.li.offsetWidth;
+    e.li.classList.add("is-blocked");
+    tickLive(s, e.d);
+  }
+
+  function finishReplay(s) {
+    s.list.replaceChildren(...s.entries.map((e) => e.li));
+    s.entries.forEach((e) => e.li.classList.remove("enter"));
+    s.logBox.scrollTop = 0;
+    setBusy(s, false);
+    applyMode(s, true, true);
+  }
+
+  function playBatch(s, i, batch, interval) {
+    s.replayOrder.slice(i, i + batch).forEach((e) => landRow(s, e));
+    s.logBox.scrollTop = s.logBox.scrollHeight;
+    const next = i + batch;
+    if (next >= s.replayOrder.length) { later(() => finishReplay(s), interval); return; }
+    later(() => playBatch(s, next, batch, interval), interval);
+  }
+
+  function runReplay(s) {
+    cancelAll();
+    if (reduceMotion.matches) { renderFinal(s); return; }
+    s.list.replaceChildren();
+    s.entries.forEach((e) => e.li.classList.remove("is-blocked"));
+    s.live = { blocked: 0, bytes: 0, servers: 0 };
+    s.on = true;
+    syncSwitch(s);
+    setBusy(s, true);
+    const zeroed = tileSpecs(s.stats, true).map((spec) => ({ ...spec, target: spec.target === null ? null : 0 }));
+    setTiles(s, zeroed, false);
+    const n = s.replayOrder.length;
+    const batch = Math.max(1, Math.ceil(n / Math.floor(REPLAY_MAX_MS / REPLAY_STEP_MS)));
+    const interval = Math.min(REPLAY_MAX_INTERVAL_MS, REPLAY_MAX_MS / Math.max(1, Math.ceil(n / batch)));
+    if (n === 0) { finishReplay(s); return; }
+    playBatch(s, 0, batch, interval);
+  }
+
+  /* ---------- before/after slider ---------- */
+  function safeImageUrl(u) {
+    try {
+      const p = new URL(u, document.baseURI);
+      return p.protocol === "https:" || p.protocol === "http:" ? p.href : null;
+    } catch (err) {
+      console.error("invalid screenshot url:", err);
+      return null;
+    }
+  }
+
+  function makeShot(url, alt, cls) {
+    const img = el("img", cls);
+    img.alt = alt;
+    img.decoding = "async";
+    img.loading = "lazy";
+    img.draggable = false;
+    img.src = url;
+    return img;
+  }
+
+  function bindSlider(box, range) {
+    const set = (v) => {
+      const pct = Math.max(0, Math.min(100, v));
+      box.style.setProperty("--pos", pct + "%");
+      range.value = String(pct);
+      range.setAttribute("aria-valuetext", T.sliderValue(Math.round(100 - pct)));
+    };
+    const fromPointer = (e) => {
+      const r = box.getBoundingClientRect();
+      if (r.width > 0) set(((e.clientX - r.left) / r.width) * 100);
+    };
+    let dragging = false;
+    const stop = () => { dragging = false; };
+    box.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      dragging = true;
+      box.setPointerCapture(e.pointerId);
+      fromPointer(e);
+    });
+    box.addEventListener("pointermove", (e) => { if (dragging) fromPointer(e); });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach((t) => box.addEventListener(t, stop));
+    range.addEventListener("input", () => set(Number(range.value)));
+    set(SLIDER_START);
+  }
+
+  function buildSlider(shots) {
+    if (!shots || typeof shots !== "object") return null;
+    const before = safeImageUrl(shots.before);
+    const after = safeImageUrl(shots.after);
+    if (!before || !after) return null;
+    const wrap = el("div", "d-cmpwrap");
+    const box = el("div", "d-cmp");
+    const range = el("input");
+    range.type = "range"; range.min = "0"; range.max = "100"; range.step = "1";
+    range.setAttribute("aria-label", T.sliderName);
+    const imgs = [makeShot(before, T.shotBeforeAlt, ""), makeShot(after, T.shotAfterAlt, "top")];
+    const knob = el("div", "d-cmp-line");
+    knob.append(el("div", "d-cmp-knob", "↔"));
+    box.append(...imgs, knob, el("span", "d-cmp-tag l", T.shotBefore), el("span", "d-cmp-tag r", T.shotAfter), range);
+    wrap.append(box, el("p", "d-cap", T.caption));
+    const remove = () => { console.error("demo screenshot failed to load"); wrap.remove(); };
+    imgs.forEach((img) => img.addEventListener("error", remove, { once: true }));
+    bindSlider(box, range);
+    return wrap;
+  }
+
+  /* ---------- result card ---------- */
+  function noteText(st) {
+    if (st.savedBytes === null) return T.noteNone;
+    return st.sized > 0 ? T.noteSized(st.sized) : T.noteBase;
+  }
+
+  function buildToolbar(s) {
+    const bar = el("div", "d-tools");
+    const sw = el("button", "d-switch");
+    sw.type = "button";
+    sw.setAttribute("role", "switch");
+    sw.setAttribute("aria-label", T.switchName);
+    s.switchLabel = el("span", "d-switch-l");
+    s.switchLabel.setAttribute("aria-hidden", "true");
+    sw.append(el("span", "d-track"), s.switchLabel);
+    sw.addEventListener("click", () => applyMode(s, !s.on, true));
+    const replay = el("button", "d-btn", T.replay);
+    replay.type = "button";
+    replay.addEventListener("click", () => runReplay(s));
+    s.switchBtn = sw;
+    bar.append(sw, replay);
+    return bar;
+  }
+
+  function footer(data) {
+    const parts = [data.finalUrl || data.url];
+    const built = formatDate(data.listBuiltAt);
+    if (built) parts.push("차단 목록 기준 " + built);
+    let text = parts.join(" · ");
+    const scanned = formatDate(data.scannedAt);
+    text += " · " + T.exampleLabel + (scanned ? " · " + scanned : "");
+    return el("p", "d-foot", text);
+  }
+
+  function buildLog(s) {
+    s.list = el("ul", "d-list");
+    s.logBox = el("div", "d-log");
+    s.logBox.tabIndex = 0;
+    s.logBox.setAttribute("role", "region");
+    s.logBox.setAttribute("aria-label", T.logName);
+    s.logBox.append(s.list);
+  }
+
+  function showZero(s) {
+    const st = s.stats;
+    const card = el("div", "d-card");
+    const h = el("p", "d-big", "요청 " + st.total + "개 중 ");
+    h.append(el("em", "", "0개 차단"));
+    buildLog(s);
+    s.list.append(...s.entries.map((e) => e.li));
+    card.append(h, el("p", "d-status", T.zero));
+    if (s.entries.length > 0) card.append(s.logBox);
+    card.append(footer(s.data));
+    show(card);
+  }
+
+  function showResult(data) {
+    const s = buildSession(data);
+    if (s.stats.blocked === 0) { showZero(s); return; }
+    const st = s.stats;
+    const pct = st.total > 0 ? Math.round((st.blocked / st.total) * 100) : 0;
+    const card = el("div", "d-card");
+    s.tilesEl = el("div", "d-tiles");
+    s.tilesEl.append(...s.tiles.map((t) => t.root));
+    buildLog(s);
+    const slider = buildSlider(data.shots);
+    card.append(el("p", "sr-only", T.summary(st.total, st.blocked, pct)), s.tilesEl, el("p", "d-note", noteText(st)), buildToolbar(s));
+    if (slider) card.append(slider);
+    card.append(s.logBox, footer(data));
+    show(card);
+    runReplay(s);
+  }
+
+  /* ---------- request ---------- */
+  async function requestStatic(file, signal) {
+    const res = await fetch(file, { signal });
+    if (!res.ok) throw new Error("example fetch failed: " + res.status);
+    return res.json();
+  }
+
+  function setActive(file) {
+    picks.querySelectorAll(".pick").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.file === file)));
+  }
+
+  async function loadExample(example) {
+    if (activeController) activeController.abort();
+    const controller = new AbortController();
+    activeController = controller;
+    const myId = ++requestId;
+    const timer = setTimeout(() => controller.abort(), STATIC_TIMEOUT_MS);
+    setActive(example.file);
+    showLoadingStatic();
+    try {
+      const body = await requestStatic(example.file, controller.signal);
+      if (myId !== requestId) return;
+      if (body && body.success && body.data) showResult(body.data);
+      else showError((body && body.error) || T.network);
+    } catch (err) {
+      if (myId !== requestId) return;
+      console.error("demo example load failed:", err);
+      showError(T.network);
+    } finally {
+      clearTimeout(timer);
+      if (myId === requestId) activeController = null;
+    }
+  }
+
+  function buildPicks() {
+    EXAMPLES.forEach((example) => {
+      const btn = el("button", "pick", example.label);
+      btn.type = "button";
+      btn.dataset.file = example.file;
+      btn.setAttribute("aria-pressed", "false");
+      btn.addEventListener("click", () => loadExample(example));
+      picks.append(btn);
+    });
+  }
+
+  buildPicks();
+})();
+</script>
 </body>
 </html>
