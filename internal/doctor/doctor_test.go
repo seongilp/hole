@@ -73,6 +73,7 @@ func baseConfig(t *testing.T) Config {
 		Timeout:           500 * time.Millisecond,
 		SystemNameservers: func(context.Context) ([]string, error) { return []string{"127.0.0.1"}, nil },
 		SystemLookup:      func(context.Context, string) ([]string, error) { return []string{"0.0.0.0"}, nil },
+		WARPStatus:        func(context.Context) WARPInfo { return WARPInfo{} },
 	}
 }
 

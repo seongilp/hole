@@ -25,7 +25,7 @@ enum DNSManager {
         let current = try currentServers()
         var saved = savedServers()
         for (service, servers) in current where servers.first != holeServer {
-            saved[service] = servers
+            saved[service] = withoutWARP(servers)
         }
         UserDefaults.standard.set(saved, forKey: savedKey)
         try forEach(Array(current.keys)) { try run(["-setdnsservers", $0, holeServer]) }
@@ -36,10 +36,22 @@ enum DNSManager {
         let saved = savedServers()
         let onHole = try currentServers().filter { $0.value.first == holeServer }.map(\.key)
         try forEach(onHole) { service in
-            let previous = saved[service] ?? []
+            let previous = withoutWARP(saved[service] ?? [])
             try run(["-setdnsservers", service] + (previous.isEmpty ? ["empty"] : previous))
         }
         UserDefaults.standard.removeObject(forKey: savedKey)
+    }
+
+    /// True if any enabled service still lists a Cloudflare WARP DNS stub.
+    static func hasWARPStub() -> Bool {
+        guard let all = try? currentServers() else { return false }
+        return all.values.contains { $0.contains(where: WARP.isStub) }
+    }
+
+    /// WARP's stubs only answer while WARP owns DNS: restoring them later would leave the Mac
+    /// without name resolution, so they are remembered as "automatic" instead.
+    private static func withoutWARP(_ servers: [String]) -> [String] {
+        servers.filter { !WARP.isStub($0) }
     }
 
     /// DNS servers of every enabled service, fetched in parallel.

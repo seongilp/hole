@@ -48,6 +48,7 @@ type Config struct {
 	// Hooks for tests; nil means the real system.
 	SystemNameservers func(ctx context.Context) ([]string, error)
 	SystemLookup      func(ctx context.Context, host string) ([]string, error)
+	WARPStatus        func(ctx context.Context) WARPInfo
 	HTTPClient        *http.Client
 }
 
@@ -71,12 +72,18 @@ func Run(ctx context.Context, cfg Config) []Result {
 	if cfg.SystemLookup == nil {
 		cfg.SystemLookup = systemLookup
 	}
+	if cfg.WARPStatus == nil {
+		cfg.WARPStatus = warpStatus
+	}
 	results := []Result{
 		checkDNSServer(cfg),
 		checkAPI(ctx, cfg),
 		checkUpstreams(cfg),
 		checkSystemDNS(ctx, cfg),
 		checkSystemResolution(ctx, cfg),
+	}
+	if w := checkWARP(ctx, cfg); w != nil {
+		results = append(results, *w)
 	}
 	return append(results, checkBrowsers(cfg.Home)...)
 }

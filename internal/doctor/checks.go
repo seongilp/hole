@@ -142,6 +142,11 @@ func checkSystemDNS(ctx context.Context, cfg Config) Result {
 		r.Level, r.Detail = Fail, "DNS 서버 없음"
 		return r
 	}
+	if isWARPStub(servers[0]) {
+		r.Level, r.Detail = Fail, "광고 차단 안 됨: Cloudflare WARP("+servers[0]+")가 DNS를 맡고 있음"
+		r.Fix = "아래 Cloudflare WARP 항목을 보세요."
+		return r
+	}
 	if !isLocal(servers[0]) {
 		r.Level, r.Detail = Fail, "광고 차단 안 됨: 이 Mac은 "+strings.Join(servers, ", ")+"를 사용 중"
 		r.Fix = "Hole 메뉴에서 '이 Mac의 DNS를 Hole로 지정'을 켜세요."

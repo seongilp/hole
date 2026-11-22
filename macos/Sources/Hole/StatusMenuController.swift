@@ -34,6 +34,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private static let crashRestartDelay: TimeInterval = 2
     private var dnsOnHole: Bool?   // nil until first checked
     private var dnsBusy = false
+    private var warpHoldsDNS = false
     private let dnsQueue = DispatchQueue(label: "com.zihado.Hole.dns")
 
     // Menu items updated in place on every poll.
@@ -46,6 +47,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private let refreshItem = NSMenuItem()
     private let serverItem = NSMenuItem()
     private let dnsItem = NSMenuItem()
+    private let warpItem = NSMenuItem()
     private let loginItem = NSMenuItem()
 
     init(client: HoleClient, server: ServerProcess) {
@@ -102,6 +104,12 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         dnsItem.target = self
         dnsItem.action = #selector(toggleDNS)
         menu.addItem(dnsItem)
+
+        warpItem.title = "⚠︎ WARP가 DNS를 맡는 중 — Traffic only로 전환…"
+        warpItem.target = self
+        warpItem.action = #selector(resolveWARP)
+        warpItem.isHidden = true
+        menu.addItem(warpItem)
 
         refreshItem.title = "차단 목록 갱신"
         refreshItem.target = self
@@ -378,23 +386,68 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         dnsItem.title = dnsBusy ? "DNS 변경 중…" : "이 Mac의 DNS를 Hole로 지정"
         // Never point DNS at a server that is not answering: that would cut off the Mac.
         dnsItem.isEnabled = !dnsBusy && (on || isOnline)
+        // Only nag when the user wants Hole to own DNS but WARP is keeping it.
+        warpItem.isHidden = !(warpHoldsDNS && Settings.manageDNS && !on)
+        warpItem.isEnabled = !dnsBusy && isOnline
     }
 
     private func checkDNS() {
         guard !dnsBusy else { return }
         dnsQueue.async { [weak self] in
             let on = DNSManager.isPointedAtHole()
+            let warp = WARP.holdsDNS()
             DispatchQueue.main.async {
                 self?.dnsOnHole = on
+                self?.warpHoldsDNS = warp
                 self?.renderDNSItem()
             }
         }
     }
 
     @objc private func toggleDNS() {
-        let turnOn = dnsOnHole != true
-        Settings.manageDNS = turnOn
-        changeDNS(toHole: turnOn, reportErrors: true)
+        guard dnsOnHole != true else {
+            Settings.manageDNS = false
+            changeDNS(toHole: false, reportErrors: true)
+            return
+        }
+        pointDNSAtHole(markManaged: true)
+    }
+
+    @objc private func resolveWARP() {
+        pointDNSAtHole(markManaged: false)
+    }
+
+    /// User asked for Hole DNS. If WARP owns the resolver, offer to move it to Traffic only
+    /// first; overriding it silently would just make WARP drop with "DNS proxy failure".
+    private func pointDNSAtHole(markManaged: Bool) {
+        dnsBusy = true
+        renderDNSItem()
+        dnsQueue.async { [weak self] in
+            let warp = WARP.holdsDNS()
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.dnsBusy = false
+                self.warpHoldsDNS = warp
+                if warp && !self.confirmWARPSwitch() {
+                    self.renderDNSItem()
+                    return
+                }
+                if markManaged { Settings.manageDNS = true }
+                self.changeDNS(toHole: true, reportErrors: true, switchWARP: warp)
+            }
+        }
+    }
+
+    private func confirmWARPSwitch() -> Bool {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Cloudflare WARP가 DNS를 맡고 있습니다"
+        alert.informativeText = "지금 모드에서는 WARP가 Hole을 우회해 광고가 차단되지 않습니다. "
+            + "WARP를 'Traffic only' 모드로 바꾸면 트래픽은 계속 WARP로 보호되고 DNS는 Hole이 처리합니다.\n\n"
+            + "되돌리려면 WARP 앱에서 모드를 다시 고르거나 터미널에서 warp-cli mode warp 를 실행하세요."
+        alert.addButton(withTitle: "Traffic only로 전환")
+        alert.addButton(withTitle: "취소")
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     /// Re-points DNS at Hole once the server answers again (after launch or a restart).
@@ -409,13 +462,25 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         changeDNS(toHole: false, reportErrors: false)
     }
 
-    private func changeDNS(toHole: Bool, reportErrors: Bool) {
+    private func changeDNS(toHole: Bool, reportErrors: Bool, switchWARP: Bool = false) {
         dnsBusy = true
         renderDNSItem()
         dnsQueue.async { [weak self] in
             var failure: Error?
+            var warp = false
             do {
-                try toHole ? DNSManager.pointAtHole() : DNSManager.restore()
+                if !toHole {
+                    try DNSManager.restore()
+                } else {
+                    if switchWARP {
+                        try WARP.switchToTrafficOnly(stubsGone: { !DNSManager.hasWARPStub() })
+                    } else if WARP.holdsDNS() {
+                        // Never fight WARP for the resolver (this runs on every poll).
+                        warp = true
+                        throw WARP.Failure.holdsDNS
+                    }
+                    try DNSManager.pointAtHole()
+                }
             } catch {
                 failure = error
             }
@@ -424,6 +489,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
                 guard let self else { return }
                 self.dnsBusy = false
                 self.dnsOnHole = on
+                self.warpHoldsDNS = warp
                 self.renderDNSItem()
                 if let failure, reportErrors {
                     self.showError("DNS 변경 실패", failure)

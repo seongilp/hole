@@ -26,7 +26,7 @@ brew install --cask seongilp/tap/hole
 hole doctor
 ```
 
-서버, API, 업스트림, 시스템 DNS, 실제 조회 경로, 브라우저 보안 DNS(Chrome/Edge/Brave/Arc/Firefox)를 점검하고 해결 방법을 알려 줍니다.
+서버, API, 업스트림, 시스템 DNS, 실제 조회 경로, 브라우저 보안 DNS(Chrome/Edge/Brave/Arc/Firefox), Cloudflare WARP 충돌을 점검하고 해결 방법을 알려 줍니다.
 
 브라우저에서 확인하려면 대시보드(⌘D)의 **브라우저 차단 테스트**를 보세요. 그 브라우저에서 광고·추적 서버 15곳에 실제로 접속해 보고 차단 여부를 표시합니다.
 
@@ -92,6 +92,16 @@ cd macos && ./build.sh && open "$PWD/Hole.app"
 네트워크 전체를 막으려면: 공유기 DHCP 설정에서 DNS 서버를 이 기기의 LAN IP로 지정합니다.
 
 브라우저의 "보안 DNS(DoH)"가 켜져 있으면 이 서버를 우회하므로 꺼야 합니다.
+
+### Cloudflare WARP와 함께 쓰기
+
+WARP 기본 모드는 시스템 DNS를 직접 맡기 때문에(`127.0.2.2`) Hole을 우회합니다. WARP를 **Traffic only** 모드로 두면 트래픽은 WARP가, DNS는 Hole이 처리합니다.
+
+```bash
+warp-cli mode tunnel_only   # 되돌리기: warp-cli mode warp
+```
+
+메뉴바 앱에서 'DNS를 Hole로 지정'을 켤 때 WARP가 DNS를 맡고 있으면 전환할지 물어봅니다. 회사가 관리하는 WARP(Zero Trust)는 모드를 바꿀 수 없을 수 있습니다.
 
 ## 테스트
 
